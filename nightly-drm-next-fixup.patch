@@ -35,3 +35,15 @@ index a6c53b6..44609b6 100644
  	list_for_each_entry(newmode, &connector->probed_modes, head) {
  		if (newmode->type & DRM_MODE_TYPE_PREFERRED) {
  			intel_sdvo->sdvo_lvds_fixed_mode =
+diff --git a/drivers/video/console/vgacon.c b/drivers/video/console/vgacon.c
+index 0dd6d96..71ffcc7 100644
+--- a/drivers/video/console/vgacon.c
++++ b/drivers/video/console/vgacon.c
+@@ -47,6 +47,7 @@
+ #include <linux/ioport.h>
+ #include <linux/init.h>
+ #include <linux/screen_info.h>
++#include <linux/sched.h>
+ #include <video/vga.h>
+ #include <asm/io.h>
+ 
