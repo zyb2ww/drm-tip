@@ -892,8 +892,8 @@ static const char *state_string(bool enabled)
 }
 
 /* Only for pre-ILK configs */
-static void assert_pll(struct drm_i915_private *dev_priv,
-		       enum pipe pipe, bool state)
+void assert_pll(struct drm_i915_private *dev_priv,
+		enum pipe pipe, bool state)
 {
 	int reg;
 	u32 val;
@@ -906,10 +906,8 @@ static void assert_pll(struct drm_i915_private *dev_priv,
 	     "PLL state assertion failure (expected %s, current %s)\n",
 	     state_string(state), state_string(cur_state));
 }
-#define assert_pll_enabled(d, p) assert_pll(d, p, true)
-#define assert_pll_disabled(d, p) assert_pll(d, p, false)
 
-static struct intel_shared_dpll *
+struct intel_shared_dpll *
 intel_crtc_to_shared_dpll(struct intel_crtc *crtc)
 {
 	struct drm_i915_private *dev_priv = crtc->base.dev->dev_private;
@@ -921,9 +919,9 @@ intel_crtc_to_shared_dpll(struct intel_crtc *crtc)
 }
 
 /* For ILK+ */
-static void assert_shared_dpll(struct drm_i915_private *dev_priv,
-			       struct intel_shared_dpll *pll,
-			       bool state)
+void assert_shared_dpll(struct drm_i915_private *dev_priv,
+			struct intel_shared_dpll *pll,
+			bool state)
 {
 	bool cur_state;
 	struct intel_dpll_hw_state hw_state;
@@ -942,8 +940,6 @@ static void assert_shared_dpll(struct drm_i915_private *dev_priv,
 	     "%s assertion failure (expected %s, current %s)\n",
 	     pll->name, state_string(state), state_string(cur_state));
 }
-#define assert_shared_dpll_enabled(d, p) assert_shared_dpll(d, p, true)
-#define assert_shared_dpll_disabled(d, p) assert_shared_dpll(d, p, false)
 
 static void assert_fdi_tx(struct drm_i915_private *dev_priv,
 			  enum pipe pipe, bool state)
@@ -1007,15 +1003,19 @@ static void assert_fdi_tx_pll_enabled(struct drm_i915_private *dev_priv,
 	WARN(!(val & FDI_TX_PLL_ENABLE), "FDI TX PLL assertion failure, should be active but is disabled\n");
 }
 
-static void assert_fdi_rx_pll_enabled(struct drm_i915_private *dev_priv,
-				      enum pipe pipe)
+void assert_fdi_rx_pll(struct drm_i915_private *dev_priv,
+		       enum pipe pipe, bool state)
 {
 	int reg;
 	u32 val;
+	bool cur_state;
 
 	reg = FDI_RX_CTL(pipe);
 	val = I915_READ(reg);
-	WARN(!(val & FDI_RX_PLL_ENABLE), "FDI RX PLL assertion failure, should be active but is disabled\n");
+	cur_state = !!(val & FDI_RX_PLL_ENABLE);
+	WARN(cur_state != state,
+	     "FDI RX PLL assertion failure (expected %s, current %s)\n",
+	     state_string(state), state_string(cur_state));
 }
 
 static void assert_panel_unlocked(struct drm_i915_private *dev_priv,
@@ -1301,20 +1301,7 @@ static void assert_pch_ports_disabled(struct drm_i915_private *dev_priv,
 	assert_pch_hdmi_disabled(dev_priv, pipe, PCH_HDMID);
 }
 
-/**
- * intel_enable_pll - enable a PLL
- * @dev_priv: i915 private structure
- * @pipe: pipe PLL to enable
- *
- * Enable @pipe's PLL so we can start pumping pixels from a plane.  Check to
- * make sure the PLL reg is writable first though, since the panel write
- * protect mechanism may be enabled.
- *
- * Note!  This is for pre-ILK only.
- *
- * Unfortunately needed by dvo_ns2501 since the dvo depends on it running.
- */
-static void intel_enable_pll(struct drm_i915_private *dev_priv, enum pipe pipe)
+static void vlv_enable_pll(struct drm_i915_private *dev_priv, enum pipe pipe)
 {
 	int reg;
 	u32 val;
@@ -1322,7 +1309,7 @@ static void intel_enable_pll(struct drm_i915_private *dev_priv, enum pipe pipe)
 	assert_pipe_disabled(dev_priv, pipe);
 
 	/* No really, not for ILK+ */
-	BUG_ON(!IS_VALLEYVIEW(dev_priv->dev) && dev_priv->info->gen >= 5);
+	BUG_ON(!IS_VALLEYVIEW(dev_priv->dev));
 
 	/* PLL is protected by panel, make sure we can write it */
 	if (IS_MOBILE(dev_priv->dev) && !IS_I830(dev_priv->dev))
@@ -1340,6 +1327,52 @@ static void intel_enable_pll(struct drm_i915_private *dev_priv, enum pipe pipe)
 	POSTING_READ(reg);
 	udelay(150); /* wait for warmup */
 	I915_WRITE(reg, val);
+	POSTING_READ(reg);
+	udelay(150); /* wait for warmup */
+}
+
+static void i9xx_enable_pll(struct intel_crtc *crtc)
+{
+	struct drm_device *dev = crtc->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	int reg = DPLL(crtc->pipe);
+	u32 dpll = crtc->config.dpll_hw_state.dpll;
+
+	assert_pipe_disabled(dev_priv, crtc->pipe);
+
+	/* No really, not for ILK+ */
+	BUG_ON(dev_priv->info->gen >= 5);
+
+	/* PLL is protected by panel, make sure we can write it */
+	if (IS_MOBILE(dev) && !IS_I830(dev))
+		assert_panel_unlocked(dev_priv, crtc->pipe);
+
+	I915_WRITE(reg, dpll);
+
+	/* Wait for the clocks to stabilize. */
+	POSTING_READ(reg);
+	udelay(150);
+
+	if (INTEL_INFO(dev)->gen >= 4) {
+		I915_WRITE(DPLL_MD(crtc->pipe),
+			   crtc->config.dpll_hw_state.dpll_md);
+	} else {
+		/* The pixel multiplier can only be updated once the
+		 * DPLL is enabled and the clocks are stable.
+		 *
+		 * So write it again.
+		 */
+		I915_WRITE(reg, dpll);
+	}
+
+	/* We do this three times for luck */
+	I915_WRITE(reg, dpll);
+	POSTING_READ(reg);
+	udelay(150); /* wait for warmup */
+	I915_WRITE(reg, dpll);
+	POSTING_READ(reg);
+	udelay(150); /* wait for warmup */
+	I915_WRITE(reg, dpll);
 	POSTING_READ(reg);
 	udelay(150); /* wait for warmup */
 }
@@ -3031,7 +3064,7 @@ static void intel_put_shared_dpll(struct intel_crtc *crtc)
 	crtc->config.shared_dpll = DPLL_ID_PRIVATE;
 }
 
-static struct intel_shared_dpll *intel_get_shared_dpll(struct intel_crtc *crtc, u32 dpll, u32 fp)
+static struct intel_shared_dpll *intel_get_shared_dpll(struct intel_crtc *crtc)
 {
 	struct drm_i915_private *dev_priv = crtc->base.dev->dev_private;
 	struct intel_shared_dpll *pll = intel_crtc_to_shared_dpll(crtc);
@@ -3061,8 +3094,8 @@ static struct intel_shared_dpll *intel_get_shared_dpll(struct intel_crtc *crtc, 
 		if (pll->refcount == 0)
 			continue;
 
-		if (dpll == (I915_READ(PCH_DPLL(pll->id)) & 0x7fffffff) &&
-		    fp == I915_READ(PCH_FP0(pll->id))) {
+		if (memcmp(&crtc->config.dpll_hw_state, &pll->hw_state,
+			   sizeof(pll->hw_state)) == 0) {
 			DRM_DEBUG_KMS("CRTC:%d sharing existing %s (refcount %d, ative %d)\n",
 				      crtc->base.base.id,
 				      pll->name, pll->refcount, pll->active);
@@ -3096,13 +3129,7 @@ found:
 		WARN_ON(pll->on);
 		assert_shared_dpll_disabled(dev_priv, pll);
 
-		/* Wait for the clocks to stabilize before rewriting the regs */
-		I915_WRITE(PCH_DPLL(pll->id), dpll & ~DPLL_VCO_ENABLE);
-		POSTING_READ(PCH_DPLL(pll->id));
-		udelay(150);
-
-		I915_WRITE(PCH_FP0(pll->id), fp);
-		I915_WRITE(PCH_DPLL(pll->id), dpll & ~DPLL_VCO_ENABLE);
+		pll->mode_set(dev_priv, pll);
 	}
 	pll->refcount++;
 
@@ -3174,7 +3201,6 @@ static void ironlake_crtc_enable(struct drm_crtc *crtc)
 	struct intel_encoder *encoder;
 	int pipe = intel_crtc->pipe;
 	int plane = intel_crtc->plane;
-	u32 temp;
 
 	WARN_ON(!crtc->enabled);
 
@@ -3188,12 +3214,9 @@ static void ironlake_crtc_enable(struct drm_crtc *crtc)
 
 	intel_update_watermarks(dev);
 
-	if (intel_pipe_has_type(crtc, INTEL_OUTPUT_LVDS)) {
-		temp = I915_READ(PCH_LVDS);
-		if ((temp & LVDS_PORT_EN) == 0)
-			I915_WRITE(PCH_LVDS, temp | LVDS_PORT_EN);
-	}
-
+	for_each_encoder_on_crtc(dev, crtc, encoder)
+		if (encoder->pre_enable)
+			encoder->pre_enable(encoder);
 
 	if (intel_crtc->config.has_pch_encoder) {
 		/* Note: FDI PLL enabling _must_ be done before we enable the
@@ -3204,10 +3227,6 @@ static void ironlake_crtc_enable(struct drm_crtc *crtc)
 		assert_fdi_tx_disabled(dev_priv, pipe);
 		assert_fdi_rx_disabled(dev_priv, pipe);
 	}
-
-	for_each_encoder_on_crtc(dev, crtc, encoder)
-		if (encoder->pre_enable)
-			encoder->pre_enable(encoder);
 
 	ironlake_pfit_enable(intel_crtc);
 
@@ -3599,7 +3618,7 @@ static void valleyview_crtc_enable(struct drm_crtc *crtc)
 		if (encoder->pre_pll_enable)
 			encoder->pre_pll_enable(encoder);
 
-	intel_enable_pll(dev_priv, pipe);
+	vlv_enable_pll(dev_priv, pipe);
 
 	for_each_encoder_on_crtc(dev, crtc, encoder)
 		if (encoder->pre_enable)
@@ -3640,11 +3659,11 @@ static void i9xx_crtc_enable(struct drm_crtc *crtc)
 	intel_crtc->active = true;
 	intel_update_watermarks(dev);
 
-	intel_enable_pll(dev_priv, pipe);
-
 	for_each_encoder_on_crtc(dev, crtc, encoder)
 		if (encoder->pre_enable)
 			encoder->pre_enable(encoder);
+
+	i9xx_enable_pll(intel_crtc);
 
 	i9xx_pfit_enable(intel_crtc);
 
@@ -4266,14 +4285,17 @@ static void i9xx_update_pll_dividers(struct intel_crtc *crtc,
 	}
 
 	I915_WRITE(FP0(pipe), fp);
+	crtc->config.dpll_hw_state.fp0 = fp;
 
 	crtc->lowfreq_avail = false;
 	if (intel_pipe_has_type(&crtc->base, INTEL_OUTPUT_LVDS) &&
 	    reduced_clock && i915_powersave) {
 		I915_WRITE(FP1(pipe), fp2);
+		crtc->config.dpll_hw_state.fp1 = fp2;
 		crtc->lowfreq_avail = true;
 	} else {
 		I915_WRITE(FP1(pipe), fp);
+		crtc->config.dpll_hw_state.fp1 = fp;
 	}
 }
 
@@ -4450,6 +4472,8 @@ static void vlv_update_pll(struct intel_crtc *crtc)
 		dpll |= DPLL_INTEGRATED_CRI_CLK_VLV;
 
 	dpll |= DPLL_VCO_ENABLE;
+	crtc->config.dpll_hw_state.dpll = dpll;
+
 	I915_WRITE(DPLL(pipe), dpll);
 	POSTING_READ(DPLL(pipe));
 	udelay(150);
@@ -4459,6 +4483,8 @@ static void vlv_update_pll(struct intel_crtc *crtc)
 
 	dpll_md = (crtc->config.pixel_multiplier - 1)
 		<< DPLL_MD_UDI_MULTIPLIER_SHIFT;
+	crtc->config.dpll_hw_state.dpll_md = dpll_md;
+
 	I915_WRITE(DPLL_MD(pipe), dpll_md);
 	POSTING_READ(DPLL_MD(pipe));
 
@@ -4474,8 +4500,6 @@ static void i9xx_update_pll(struct intel_crtc *crtc,
 {
 	struct drm_device *dev = crtc->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_encoder *encoder;
-	int pipe = crtc->pipe;
 	u32 dpll;
 	bool is_sdvo;
 	struct dpll *clock = &crtc->config.dpll;
@@ -4537,35 +4561,16 @@ static void i9xx_update_pll(struct intel_crtc *crtc,
 		dpll |= PLL_REF_INPUT_DREFCLK;
 
 	dpll |= DPLL_VCO_ENABLE;
-	I915_WRITE(DPLL(pipe), dpll & ~DPLL_VCO_ENABLE);
-	POSTING_READ(DPLL(pipe));
-	udelay(150);
-
-	for_each_encoder_on_crtc(dev, &crtc->base, encoder)
-		if (encoder->pre_pll_enable)
-			encoder->pre_pll_enable(encoder);
-
-	if (crtc->config.has_dp_encoder)
-		intel_dp_set_m_n(crtc);
-
-	I915_WRITE(DPLL(pipe), dpll);
-
-	/* Wait for the clocks to stabilize. */
-	POSTING_READ(DPLL(pipe));
-	udelay(150);
+	crtc->config.dpll_hw_state.dpll = dpll;
 
 	if (INTEL_INFO(dev)->gen >= 4) {
 		u32 dpll_md = (crtc->config.pixel_multiplier - 1)
 			<< DPLL_MD_UDI_MULTIPLIER_SHIFT;
-		I915_WRITE(DPLL_MD(pipe), dpll_md);
-	} else {
-		/* The pixel multiplier can only be updated once the
-		 * DPLL is enabled and the clocks are stable.
-		 *
-		 * So write it again.
-		 */
-		I915_WRITE(DPLL(pipe), dpll);
+		crtc->config.dpll_hw_state.dpll_md = dpll_md;
 	}
+
+	if (crtc->config.has_dp_encoder)
+		intel_dp_set_m_n(crtc);
 }
 
 static void i8xx_update_pll(struct intel_crtc *crtc,
@@ -4574,8 +4579,6 @@ static void i8xx_update_pll(struct intel_crtc *crtc,
 {
 	struct drm_device *dev = crtc->base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_encoder *encoder;
-	int pipe = crtc->pipe;
 	u32 dpll;
 	struct dpll *clock = &crtc->config.dpll;
 
@@ -4601,26 +4604,7 @@ static void i8xx_update_pll(struct intel_crtc *crtc,
 		dpll |= PLL_REF_INPUT_DREFCLK;
 
 	dpll |= DPLL_VCO_ENABLE;
-	I915_WRITE(DPLL(pipe), dpll & ~DPLL_VCO_ENABLE);
-	POSTING_READ(DPLL(pipe));
-	udelay(150);
-
-	for_each_encoder_on_crtc(dev, &crtc->base, encoder)
-		if (encoder->pre_pll_enable)
-			encoder->pre_pll_enable(encoder);
-
-	I915_WRITE(DPLL(pipe), dpll);
-
-	/* Wait for the clocks to stabilize. */
-	POSTING_READ(DPLL(pipe));
-	udelay(150);
-
-	/* The pixel multiplier can only be updated once the
-	 * DPLL is enabled and the clocks are stable.
-	 *
-	 * So write it again.
-	 */
-	I915_WRITE(DPLL(pipe), dpll);
+	crtc->config.dpll_hw_state.dpll = dpll;
 }
 
 static void intel_set_pipe_timings(struct intel_crtc *intel_crtc)
@@ -4957,6 +4941,7 @@ static bool i9xx_get_pipe_config(struct intel_crtc *crtc,
 		pipe_config->pixel_multiplier =
 			((tmp & DPLL_MD_UDI_MULTIPLIER_MASK)
 			 >> DPLL_MD_UDI_MULTIPLIER_SHIFT) + 1;
+		pipe_config->dpll_hw_state.dpll_md = tmp;
 	} else if (IS_I945G(dev) || IS_I945GM(dev) || IS_G33(dev)) {
 		tmp = I915_READ(DPLL(crtc->pipe));
 		pipe_config->pixel_multiplier =
@@ -4967,6 +4952,11 @@ static bool i9xx_get_pipe_config(struct intel_crtc *crtc,
 		 * port and will be fixed up in the encoder->get_config
 		 * function. */
 		pipe_config->pixel_multiplier = 1;
+	}
+	pipe_config->dpll_hw_state.dpll = I915_READ(DPLL(crtc->pipe));
+	if (!IS_VALLEYVIEW(dev)) {
+		pipe_config->dpll_hw_state.fp0 = I915_READ(FP0(crtc->pipe));
+		pipe_config->dpll_hw_state.fp1 = I915_READ(FP1(crtc->pipe));
 	}
 
 	return true;
@@ -5710,7 +5700,7 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 		else
 			intel_crtc->config.dpll_hw_state.fp1 = fp;
 
-		pll = intel_get_shared_dpll(intel_crtc, dpll, fp);
+		pll = intel_get_shared_dpll(intel_crtc);
 		if (pll == NULL) {
 			DRM_DEBUG_DRIVER("failed to find PLL for pipe %c\n",
 					 pipe_name(pipe));
@@ -5722,10 +5712,6 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 	if (intel_crtc->config.has_dp_encoder)
 		intel_dp_set_m_n(intel_crtc);
 
-	for_each_encoder_on_crtc(dev, crtc, encoder)
-		if (encoder->pre_pll_enable)
-			encoder->pre_pll_enable(encoder);
-
 	if (is_lvds && has_reduced_clock && i915_powersave)
 		intel_crtc->lowfreq_avail = true;
 	else
@@ -5734,23 +5720,6 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 	if (intel_crtc->config.has_pch_encoder) {
 		pll = intel_crtc_to_shared_dpll(intel_crtc);
 
-		I915_WRITE(PCH_DPLL(pll->id), dpll);
-
-		/* Wait for the clocks to stabilize. */
-		POSTING_READ(PCH_DPLL(pll->id));
-		udelay(150);
-
-		/* The pixel multiplier can only be updated once the
-		 * DPLL is enabled and the clocks are stable.
-		 *
-		 * So write it again.
-		 */
-		I915_WRITE(PCH_DPLL(pll->id), dpll);
-
-		if (has_reduced_clock)
-			I915_WRITE(PCH_FP1(pll->id), fp2);
-		else
-			I915_WRITE(PCH_FP1(pll->id), fp);
 	}
 
 	intel_set_pipe_timings(intel_crtc);
@@ -8140,6 +8109,7 @@ intel_pipe_config_compare(struct drm_device *dev,
 
 	PIPE_CONF_CHECK_I(shared_dpll);
 	PIPE_CONF_CHECK_X(dpll_hw_state.dpll);
+	PIPE_CONF_CHECK_X(dpll_hw_state.dpll_md);
 	PIPE_CONF_CHECK_X(dpll_hw_state.fp0);
 	PIPE_CONF_CHECK_X(dpll_hw_state.fp1);
 
@@ -8809,19 +8779,32 @@ static bool ibx_pch_dpll_get_hw_state(struct drm_i915_private *dev_priv,
 	return val & DPLL_VCO_ENABLE;
 }
 
+static void ibx_pch_dpll_mode_set(struct drm_i915_private *dev_priv,
+				  struct intel_shared_dpll *pll)
+{
+	I915_WRITE(PCH_FP0(pll->id), pll->hw_state.fp0);
+	I915_WRITE(PCH_FP1(pll->id), pll->hw_state.fp1);
+}
+
 static void ibx_pch_dpll_enable(struct drm_i915_private *dev_priv,
 				struct intel_shared_dpll *pll)
 {
-	uint32_t reg, val;
-
 	/* PCH refclock must be enabled first */
 	assert_pch_refclk_enabled(dev_priv);
 
-	reg = PCH_DPLL(pll->id);
-	val = I915_READ(reg);
-	val |= DPLL_VCO_ENABLE;
-	I915_WRITE(reg, val);
-	POSTING_READ(reg);
+	I915_WRITE(PCH_DPLL(pll->id), pll->hw_state.dpll);
+
+	/* Wait for the clocks to stabilize. */
+	POSTING_READ(PCH_DPLL(pll->id));
+	udelay(150);
+
+	/* The pixel multiplier can only be updated once the
+	 * DPLL is enabled and the clocks are stable.
+	 *
+	 * So write it again.
+	 */
+	I915_WRITE(PCH_DPLL(pll->id), pll->hw_state.dpll);
+	POSTING_READ(PCH_DPLL(pll->id));
 	udelay(200);
 }
 
@@ -8830,7 +8813,6 @@ static void ibx_pch_dpll_disable(struct drm_i915_private *dev_priv,
 {
 	struct drm_device *dev = dev_priv->dev;
 	struct intel_crtc *crtc;
-	uint32_t reg, val;
 
 	/* Make sure no transcoder isn't still depending on us. */
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, base.head) {
@@ -8838,11 +8820,8 @@ static void ibx_pch_dpll_disable(struct drm_i915_private *dev_priv,
 			assert_pch_transcoder_disabled(dev_priv, crtc->pipe);
 	}
 
-	reg = PCH_DPLL(pll->id);
-	val = I915_READ(reg);
-	val &= ~DPLL_VCO_ENABLE;
-	I915_WRITE(reg, val);
-	POSTING_READ(reg);
+	I915_WRITE(PCH_DPLL(pll->id), 0);
+	POSTING_READ(PCH_DPLL(pll->id));
 	udelay(200);
 }
 
@@ -8861,6 +8840,7 @@ static void ibx_pch_dpll_init(struct drm_device *dev)
 	for (i = 0; i < dev_priv->num_shared_dpll; i++) {
 		dev_priv->shared_dplls[i].id = i;
 		dev_priv->shared_dplls[i].name = ibx_pch_dpll_names[i];
+		dev_priv->shared_dplls[i].mode_set = ibx_pch_dpll_mode_set;
 		dev_priv->shared_dplls[i].enable = ibx_pch_dpll_enable;
 		dev_priv->shared_dplls[i].disable = ibx_pch_dpll_disable;
 		dev_priv->shared_dplls[i].get_hw_state =
