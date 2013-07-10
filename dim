@@ -1,0 +1,417 @@
+#!/bin/bash
+
+# drm-intel-next maintainer script
+
+# fail on any goof-up
+set -e
+
+function update_linux_next
+{
+	cd ~/linux/src
+
+	if git grep "EXTRAVERSION.*=" origin/master Makefile | grep rc > /dev/null ; then
+		echo linux-next: -rc phase
+		if [[ $1 == queued ]] ; then
+			echo Updating for-linux-next to -queued
+			git push danvet +drm-intel-next-queued:for-linux-next >& /dev/null
+		fi
+	else
+		echo linux-next: merge window
+		if [[ $1 == fixes ]] ; then
+			echo Updating for-linux-next to -fixes
+			git push danvet +drm-intel-fixes:for-linux-next >& /dev/null
+		fi
+	fi
+}
+
+function check_conflicts
+{
+	if git diff | grep '<<<<<<<' ; then
+		echo conflict found
+		false
+	fi
+	if git diff | grep '=======' ; then
+		echo conflict found
+		false
+	fi
+	if git diff | grep '>>>>>>>' ; then
+		echo conflict found
+		false
+	fi
+	if git diff | grep '|||||||' ; then
+		echo conflict found
+		false
+	fi
+	true
+}
+
+function update_nightly
+{
+	cd ~/linux/drm-intel-nightly
+	git fetch origin >& /dev/null
+	git reset --hard origin/drm-intel-next-queued >& /dev/null
+
+	# merge -fixes
+	git merge --rerere-autoupdate --no-commit origin/drm-intel-fixes >& /dev/null || true
+	if [ -f ../nightly-fixup.patch ] ; then
+		echo applying manual fixup patch for drm-intel-fixes merge ...
+		git apply --index ../nightly-fixup.patch
+		check_conflicts
+		git add -u
+	fi
+
+	git commit --no-edit || true
+
+	# merge drm-next
+	git merge --rerere-autoupdate --no-commit drm-upstream/drm-next >& /dev/null || true
+	if [ -f ../nightly-drm-next-fixup.patch ] ; then
+		echo applying manual fixup patch for drm-next merge ...
+		git apply --index ../nightly-drm-next-fixup.patch
+		check_conflicts
+		git add -u
+	fi
+
+	git commit --no-edit || true
+
+	# merge drm-next
+	git merge --rerere-autoupdate --no-commit drm-upstream/drm-fixes >& /dev/null || true
+	if [ -f ../nightly-drm-fixes-fixup.patch ] ; then
+		echo applying manual fixup patch for drm-fixes merge ...
+		git apply --index ../nightly-drm-fixes-fixup.patch
+		check_conflicts
+		git add -u
+	fi
+
+	git commit --no-edit || true
+
+	git push origin +HEAD >& /dev/null && echo "nightly branch successfully updated"
+
+	cd ~/linux/drm-intel-rerere/
+	if git branch | grep rerere-cache | grep '\*' >& /dev/null ; then
+		git pull >& /dev/null
+		git rm *.patch >& /dev/null || true
+		cp ~/linux/drm-intel-nightly/.git/rr-cache/* rr-cache -r
+		cp ~/bin/dim dim
+		cp ../*fixup.patch . >& /dev/null || true
+		git add *.patch >& /dev/null || true
+		git add dim > /dev/null
+		git add rr-cache/* > /dev/null
+		time=`date +%Yy-%mm-%dd-%Hh-%Mm-%Ss`
+		if git c -m "$time: -nightly rerere cache update" >& /dev/null; then
+			git push origin HEAD >& /dev/null && echo "rerere cache successfully updated"
+		else
+			echo "nothing changed in the rerere cache"
+		fi
+	else
+		echo "Branch setup for the rerere-cache is borked"
+	fi
+
+}
+
+function check_repo_clean
+{
+	cd $1
+	if ! git diff-index --quiet HEAD ; then
+		echo $2 repo not clean, aborting
+		exit 1
+	fi
+
+}
+
+function dim_checkpatch # $1 is the git sha1 to check
+{
+	git show $1 --pretty=email | scripts/checkpatch.pl  - || true
+	git show $1 | grep '^\+.*\WBUG' > /dev/null && echo -e "\n\nWARNING: New BUG macro added\n" || true
+	git show $1 | grep '^\+.*drm_i915_private_t' > /dev/null && echo -e "\n\nWARNING: New drm_i915_private_t added\n" || true
+}
+
+function prep_testing # $1 kernel branch to test
+{
+	check_repo_clean ~/xorg/intel-gpu-tools/ i-g-t
+	check_repo_clean ~/xorg/piglit/ piglit
+	check_repo_clean ~/linux/src Kernel
+
+	cd ~/xorg/piglit
+	git checkout master
+	git pull --rebase
+	cmake -DPIGLIT_USE_WAFFLE=OFF . && make -j 4
+	cd bin
+	ln ../../intel-gpu-tools igt -s || true
+
+	cd ~/xorg/intel-gpu-tools/
+	git checkout master
+	git pull --rebase
+	./autogen.sh && make -j 4
+
+	cd ~/linux/src
+	git remote update || true
+	git checkout $1
+	make olddefconfig
+	make -j 4
+
+	BASH_ENV=~/.bashrc su -c "/root/bin/lkinst ; reboot"
+
+}
+
+cd ~/linux/src
+
+case "$1" in
+	prep-branch|pb)
+		if [ "x$2" == "x" ] ; then
+			prep_testing HEAD
+		else
+			prep_testing $2
+		fi
+		;;
+	prep-nightly|pn)
+		prep_testing danvet/drm-intel-nightly
+		;;
+	nightly-forget)
+		cd ~/linux/drm-intel-nightly
+		git fetch origin >& /dev/null
+		git reset --hard origin/drm-intel-next-queued >& /dev/null
+		git merge origin/drm-intel-fixes
+		git rerere forget
+		;;
+	update-branches|ub)
+		git fetch danvet
+		check_repo_clean ~/linux/src Kernel
+		dim co
+		git rebase -i danvet/drm-intel-next-queued
+		dim cof
+		git rebase -i danvet/drm-intel-fixes
+		;;
+	push-queued|pq)
+		if git branch | grep drm-intel-next-queued | grep '\*' ; then
+			git push danvet	drm-intel-next-queued
+
+			update_nightly
+			update_linux_next queued
+		else
+			echo "You're on the wrong branch."
+		fi
+		;;
+	push-fixes|pf)
+		if git branch | grep drm-intel-fixes | grep '\*' ; then
+			git push danvet	drm-intel-fixes
+
+			update_nightly
+			update_linux_next fixes
+		else
+			echo "You're on the wrong branch."
+		fi
+		;;
+	co)
+		git checkout drm-intel-next-queued
+		;;
+	cof)
+		git checkout drm-intel-fixes
+		;;
+	apply-queued|aq)
+		if git branch | grep drm-intel-next-queued | grep '\*' ; then
+			shift
+			git am -3 $@
+			dim_checkpatch HEAD
+			git ca &
+		else
+			echo "You're on the wrong branch."
+		fi
+		;;
+	apply-fixes|af)
+		if git branch | grep drm-intel-fixes | grep '\*' ; then
+			shift
+			git am -3 $@
+			dim_checkpatch HEAD
+			git ca &
+		else
+			echo "You're on the wrong branch."
+		fi
+		;;
+	magic-patch|mp)
+		conflict_files=`patch -p1 | grep "saving rejects" | sed -e "s/.*saving rejects to file \(.*\)/\1/"`
+
+		if [[ $conflict_files != "" ]] ; then
+			echo conflicts found!
+		fi
+
+		for file in $conflict_files ; do
+			echo wiggling in ${file%.rej}:
+			#cat $file
+			rm -f ${file%.rej}.porig
+			wiggle -r ${file%.rej} $file || true
+		done
+		;;
+	tc)
+		git tag --contains $2 | grep ^v | sort -V | head -n 1
+		;;
+	check-patch|cp)
+		if [ "x$2" == "x" ] ; then
+			dim_checkpatch HEAD
+		else
+			dim_checkpatch $2
+		fi
+		;;
+	pull-request)
+		upstream=airlied/drm-next
+		if [[ "x$2" != "x" ]] ; then
+			upstream=$2
+		fi
+		echo Using $upstream as the upstream
+		git request-pull $upstream
+		git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-next > ~/tmp/dim-pull-request
+		# stupid request-pull script picks the first remote branch that
+		# matches, and drm-intel-next comes before for-airlied :(
+		#sed -ie 's/drm-intel-next$/for-airlied/' ~/tmp/dim-pull-request
+		;;
+	pull-request-fixes)
+		today=`date +%Y-%m-%d`
+		upstream=origin/master
+		if [[ "x$2" != "x" ]] ; then
+			upstream=$2
+		fi
+		echo Using $upstream as the upstream
+		git tag -f drm-intel-fixes-$today danvet/drm-intel-fixes
+		git push -f danvet drm-intel-fixes-$today
+		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-fixes > ~/tmp/dim-pull-request
+		;;
+	update-next)
+		today=`date +%Y-%m-%d`
+		cd ~/linux/src
+		gitk drm-intel-next-queued ^airlied/drm-next
+		# TODO compare drm-intel-queued with upstream branch
+		if git log drm-intel-next-queued...danvet/drm-intel-next-queued | grep commit ; then
+			echo "drm-intel-next-queued is not up to date"
+			exit 1
+		fi
+		git push danvet drm-intel-next-queued:drm-intel-next
+		git tag -f drm-intel-next-$today danvet/drm-intel-next
+		git push -f danvet drm-intel-next-$today
+
+		echo "Updating -testing to latest -nightly"
+		cd ~/linux/drm-intel-nightly
+		git push origin +HEAD:drm-intel-testing
+		;;
+	checker)
+		rm drivers/gpu/drm/i915/*.o &> /dev/null || true
+		rm drivers/gpu/drm/i915/*.ko &> /dev/null || true
+		make C=1 drivers/gpu/drm/i915/i915.ko
+		;;
+	maintainer-stats|ms)
+		since='--since="1 month ago"'
+		git fetch danvet &> /dev/null
+		git fetch airlied &> /dev/null
+		echo Maintainer statistics for roughly the past month:
+		patches=`git log danvet/drm-intel-nightly -i --grep="Signed.*Daniel Vetter" "$since" --pretty=oneline | wc -l`
+		bugs=`git log danvet/drm-intel-nightly -i --grep="Signed.*Daniel Vetter" "$since" | grep '\(Bug\w*:\|Referen\w*:\)' | wc -l`
+		regression=`git log danvet/drm-intel-nightly -i --grep="Signed.*Daniel Vetter" --grep="regress" --all-match "$since" --pretty=onelin | wc -l`
+		echo $patches patches merged, referencing $bugs reported issues and fixing $regression regressions
+		pulls=`git log --grep="Merge branch.*danvet" "$since" --pretty=oneline airlied/drm-next | wc -l`
+		echo $pulls pull requests merged by upstream drm maintainer Dave Airlie
+		nexts=`git log danvet/drm-intel-nightly --decorate "$since" | grep "tag: drm-intel-next" | wc -l`
+		echo $nexts drm-intel-next feature slices sent off to QA for extended manual testing
+
+		kernel_patches=`git log danvet/drm-intel-nightly --author="Daniel Vetter" "$since" --pretty=oneline | wc -l`
+		cd ~/xorg/intel-gpu-tools
+		git fetch origin &> /dev/null
+		igt_patches=`git log origin/master --author="Daniel Vetter" "$since" --pretty=oneline | wc -l`
+		echo
+		echo own patches merged into the kernel: $kernel_patches, intel-gpu-tools: $igt_patches
+		;;
+	*)
+		cat <<-HERE
+		dim drm-intel maintainer script
+		===============================
+
+		prep-branch|pb [commit-ish|branch]
+
+		Prepare i-g-t/piglit and kernel for testing branch, defaulting
+		to HEAD of ~/linux/src. Last command asks for root pw to install
+		the kernel and then reboot.
+
+		prep-nightly|pn
+
+		Prepare i-g-t/piglit and kernel for testing nightly. Last
+		command asks for root pw to install the kernel and then reboot.
+
+		nightly-forget
+
+		Forget git rerere solutions for nightly merges in case they
+		contain a bogus merge resolution.
+
+		update-branches
+
+		Updates all maintainer branches.
+
+		update-next
+
+		Pushes out the current next, tags it and pushed the tag. Then
+		updatest -testing to latest -nightly.
+
+		push-queued|pq
+		push-fixes|pf
+
+		Updates the drm-intel-fixes or the drm-intel-next-queued branch
+		respectively. Complains if that's not the current branch,
+		assuming that patches got merged to the wrong branch.
+
+		co
+		cof
+
+		Checks out the drm-intel-fixes branch or dinq respectively for
+		merging patches.
+
+		apply-queued|aq [git am arguments]
+		apply-fixes|af [git am arguments]
+
+		Applies a patch to fixes or queued respectively, complains if
+		it's not the right branch. Additional arguments are passed to
+		git am.
+
+		magic-patch|mp
+
+		Apply a patch using patch and then wiggle in any conflicts.
+
+		tc <commit-ish>
+
+		Prints the linux kernel tag which contains the supplied commit-ish
+
+		check-patch|cp [commit-ish]
+
+		Runs a commit through the check tools like when applying a
+		patch. Git commit-ish can be passed in, defaults to HEAD
+
+		pull-request [upstream]
+		pull-request-fixes [upstream]
+
+		Create a tag for the -fixes, but no tag is created for -next
+		since that's already been done by update-next. Then prepares a
+		pull request in ~/tmp/dim-pull-request. The upstream for -fixes
+		defaults to origin/master, the upstream for -next defaults to
+		airlied/drm-next
+
+		Since thag for -fixes is based only on the day (and not the
+		exact time) and there's not tag being pushed for -next the pull
+		request can be regenerated with the same commands if the
+		upstream was wrong.
+
+		update-next
+
+		Pushes out the latest dinq to drm-intel-next and tags it. Also
+		pushes out the latest nightly to drm-intel-testing. For an
+		overview a gitk view of the currently unmerged feature pile is
+		opened.
+
+		Note that the user should first ensure that the current -nightly
+		matches the current dinq
+
+		checker
+
+		Run sparse on the kernel.
+
+		maintainer-stats|ms
+
+		Gathers some maintainer statistics.
+		HERE
+
+		;;
+esac
