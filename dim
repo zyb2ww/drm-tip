@@ -49,6 +49,7 @@ function update_nightly
 {
 	cd ~/linux/drm-intel-nightly
 	git fetch origin >& /dev/null
+	git fetch drm-upstream >& /dev/null
 	git reset --hard origin/drm-intel-next-queued >& /dev/null
 
 	# merge -fixes
