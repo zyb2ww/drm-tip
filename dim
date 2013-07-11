@@ -305,7 +305,7 @@ case "$1" in
 		bugs=`git log danvet/drm-intel-nightly -i --grep="Signed.*Daniel Vetter" "$since" | grep '\(Bug\w*:\|Referen\w*:\)' | wc -l`
 		regression=`git log danvet/drm-intel-nightly -i --grep="Signed.*Daniel Vetter" --grep="regress" --all-match "$since" --pretty=onelin | wc -l`
 		echo $patches patches merged, referencing $bugs reported issues and fixing $regression regressions
-		pulls=`git log --grep="Merge branch.*danvet" "$since" --pretty=oneline airlied/drm-next | wc -l`
+		pulls=`git log --grep='Merge \(branch\|tag\).*danvet' "$since" --pretty=oneline airlied/drm-next | wc -l`
 		echo $pulls pull requests merged by upstream drm maintainer Dave Airlie
 		nexts=`git log danvet/drm-intel-nightly --decorate "$since" | grep "tag: drm-intel-next" | wc -l`
 		echo $nexts drm-intel-next feature slices sent off to QA for extended manual testing
