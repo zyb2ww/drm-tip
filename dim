@@ -48,9 +48,9 @@ function check_conflicts
 function update_nightly
 {
 	cd ~/linux/drm-intel-nightly
-	echo meh
 	# git fetch returns 128 if there's nothing to be fetched
 	git fetch origin >& /dev/null || true
+	# don't auto-fetch drm-upstream to avoid including -rc1 too early
 	#git fetch drm-upstream >& /dev/null || true
 	git reset --hard origin/drm-intel-next-queued >& /dev/null
 
