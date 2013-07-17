@@ -26,19 +26,19 @@ function update_linux_next
 
 function check_conflicts
 {
-	if git cdiff | grep '<<<<<<<' ; then
+	if git diff | grep '<<<<<<<' ; then
 		echo conflict found
 		exit 1
 	fi
-	if git cdiff | grep '=======' ; then
+	if git diff | grep '=======' ; then
 		echo conflict found
 		exit 1
 	fi
-	if git cdiff | grep '>>>>>>>' ; then
+	if git diff | grep '>>>>>>>' ; then
 		echo conflict found
 		exit 1
 	fi
-	if git cdiff | grep '|||||||' ; then
+	if git diff | grep '|||||||' ; then
 		echo conflict found
 		exit 1
 	fi
@@ -59,9 +59,9 @@ function update_nightly
 	if [ -f ../nightly-fixup.patch ] ; then
 		echo applying manual fixup patch for drm-intel-fixes merge ...
 		git apply --index ../nightly-fixup.patch
-		git add -u
 	fi
 	check_conflicts
+	git add -u
 
 	git commit --no-edit || true
 
@@ -70,9 +70,9 @@ function update_nightly
 	if [ -f ../nightly-drm-next-fixup.patch ] ; then
 		echo applying manual fixup patch for drm-next merge ...
 		git apply --index ../nightly-drm-next-fixup.patch
-		git add -u
 	fi
 	check_conflicts
+	git add -u
 
 	git commit --no-edit || true
 
@@ -81,9 +81,9 @@ function update_nightly
 	if [ -f ../nightly-drm-fixes-fixup.patch ] ; then
 		echo applying manual fixup patch for drm-fixes merge ...
 		git apply --index ../nightly-drm-fixes-fixup.patch
-		git add -u
 	fi
 	check_conflicts
+	git add -u
 
 	git commit --no-edit || true
 
