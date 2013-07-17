@@ -59,7 +59,7 @@ function update_nightly
 	if [ -f ../nightly-fixup.patch ] ; then
 		echo applying manual fixup patch for drm-intel-fixes merge ...
 		git apply --index ../nightly-fixup.patch
-		check_conflicts || exit 1
+		check_conflicts
 		git add -u
 	fi
 
@@ -70,7 +70,7 @@ function update_nightly
 	if [ -f ../nightly-drm-next-fixup.patch ] ; then
 		echo applying manual fixup patch for drm-next merge ...
 		git apply --index ../nightly-drm-next-fixup.patch
-		check_conflicts || exit 1
+		check_conflicts
 		git add -u
 	fi
 
@@ -81,7 +81,7 @@ function update_nightly
 	if [ -f ../nightly-drm-fixes-fixup.patch ] ; then
 		echo applying manual fixup patch for drm-fixes merge ...
 		git apply --index ../nightly-drm-fixes-fixup.patch
-		check_conflicts || exit 1
+		check_conflicts
 		git add -u
 	fi
 
