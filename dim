@@ -260,8 +260,7 @@ case "$1" in
 			upstream=$2
 		fi
 		echo Using $upstream as the upstream
-		git request-pull $upstream
-		git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-next > ~/tmp/dim-pull-request
+		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-next > ~/tmp/dim-pull-request
 		# stupid request-pull script picks the first remote branch that
 		# matches, and drm-intel-next comes before for-airlied :(
 		#sed -ie 's/drm-intel-next$/for-airlied/' ~/tmp/dim-pull-request
