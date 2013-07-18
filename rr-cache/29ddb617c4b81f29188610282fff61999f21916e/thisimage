@@ -3314,7 +3314,7 @@ int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
 		return -EBUSY;
 	}
 
-	if (!i915_gem_valid_gtt_space(dev, &vma->node, cache_level)) {
+	if (vma && !i915_gem_valid_gtt_space(dev, &vma->node, cache_level)) {
 		ret = i915_gem_object_unbind(obj);
 		if (ret)
 			return ret;
