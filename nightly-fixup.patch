@@ -1,0 +1,13 @@
+diff --git a/drivers/scsi/Kconfig b/drivers/scsi/Kconfig
+index 48b2918..0a212bc 100644
+--- a/drivers/scsi/Kconfig
++++ b/drivers/scsi/Kconfig
+@@ -69,6 +69,8 @@ comment "SCSI support type (disk, tape, CD-ROM)"
+ config BLK_DEV_SD
+ 	tristate "SCSI disk support"
+ 	depends on SCSI
++	select CRYPTO if BLK_DEV_INTEGRITY
++	select CRYPTO_CRCT10DIF if BLK_DEV_INTEGRITY
+ 	select CRC_T10DIF if BLK_DEV_INTEGRITY
+ 	---help---
+ 	  If you want to use SCSI hard disks, Fibre Channel disks,
