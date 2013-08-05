@@ -1680,9 +1680,6 @@ static void i830_update_wm(struct drm_device *dev)
 	I915_WRITE(FW_BLC, fwater_lo);
 }
 
-#define ILK_LP0_PLANE_LATENCY		700
-#define ILK_LP0_CURSOR_LATENCY		1300
-
 /*
  * Check the wm result.
  *
@@ -1797,9 +1794,9 @@ static void ironlake_update_wm(struct drm_device *dev)
 	enabled = 0;
 	if (g4x_compute_wm0(dev, PIPE_A,
 			    &ironlake_display_wm_info,
-			    ILK_LP0_PLANE_LATENCY,
+			    dev_priv->wm.pri_latency[0] * 100,
 			    &ironlake_cursor_wm_info,
-			    ILK_LP0_CURSOR_LATENCY,
+			    dev_priv->wm.cur_latency[0] * 100,
 			    &plane_wm, &cursor_wm)) {
 		I915_WRITE(WM0_PIPEA_ILK,
 			   (plane_wm << WM0_PIPE_PLANE_SHIFT) | cursor_wm);
@@ -1811,9 +1808,9 @@ static void ironlake_update_wm(struct drm_device *dev)
 
 	if (g4x_compute_wm0(dev, PIPE_B,
 			    &ironlake_display_wm_info,
-			    ILK_LP0_PLANE_LATENCY,
+			    dev_priv->wm.pri_latency[0] * 100,
 			    &ironlake_cursor_wm_info,
-			    ILK_LP0_CURSOR_LATENCY,
+			    dev_priv->wm.cur_latency[0] * 100,
 			    &plane_wm, &cursor_wm)) {
 		I915_WRITE(WM0_PIPEB_ILK,
 			   (plane_wm << WM0_PIPE_PLANE_SHIFT) | cursor_wm);
@@ -1837,7 +1834,7 @@ static void ironlake_update_wm(struct drm_device *dev)
 
 	/* WM1 */
 	if (!ironlake_compute_srwm(dev, 1, enabled,
-				   ILK_READ_WM1_LATENCY() * 500,
+				   dev_priv->wm.pri_latency[1] * 500,
 				   &ironlake_display_srwm_info,
 				   &ironlake_cursor_srwm_info,
 				   &fbc_wm, &plane_wm, &cursor_wm))
@@ -1845,14 +1842,14 @@ static void ironlake_update_wm(struct drm_device *dev)
 
 	I915_WRITE(WM1_LP_ILK,
 		   WM1_LP_SR_EN |
-		   (ILK_READ_WM1_LATENCY() << WM1_LP_LATENCY_SHIFT) |
+		   (dev_priv->wm.pri_latency[1] << WM1_LP_LATENCY_SHIFT) |
 		   (fbc_wm << WM1_LP_FBC_SHIFT) |
 		   (plane_wm << WM1_LP_SR_SHIFT) |
 		   cursor_wm);
 
 	/* WM2 */
 	if (!ironlake_compute_srwm(dev, 2, enabled,
-				   ILK_READ_WM2_LATENCY() * 500,
+				   dev_priv->wm.pri_latency[2] * 500,
 				   &ironlake_display_srwm_info,
 				   &ironlake_cursor_srwm_info,
 				   &fbc_wm, &plane_wm, &cursor_wm))
@@ -1860,7 +1857,7 @@ static void ironlake_update_wm(struct drm_device *dev)
 
 	I915_WRITE(WM2_LP_ILK,
 		   WM2_LP_EN |
-		   (ILK_READ_WM2_LATENCY() << WM1_LP_LATENCY_SHIFT) |
+		   (dev_priv->wm.pri_latency[2] << WM1_LP_LATENCY_SHIFT) |
 		   (fbc_wm << WM1_LP_FBC_SHIFT) |
 		   (plane_wm << WM1_LP_SR_SHIFT) |
 		   cursor_wm);
@@ -1874,7 +1871,7 @@ static void ironlake_update_wm(struct drm_device *dev)
 static void sandybridge_update_wm(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int latency = SNB_READ_WM0_LATENCY() * 100;	/* In unit 0.1us */
+	int latency = dev_priv->wm.pri_latency[0] * 100;	/* In unit 0.1us */
 	u32 val;
 	int fbc_wm, plane_wm, cursor_wm;
 	unsigned int enabled;
@@ -1929,7 +1926,7 @@ static void sandybridge_update_wm(struct drm_device *dev)
 
 	/* WM1 */
 	if (!ironlake_compute_srwm(dev, 1, enabled,
-				   SNB_READ_WM1_LATENCY() * 500,
+				   dev_priv->wm.pri_latency[1] * 500,
 				   &sandybridge_display_srwm_info,
 				   &sandybridge_cursor_srwm_info,
 				   &fbc_wm, &plane_wm, &cursor_wm))
@@ -1937,14 +1934,14 @@ static void sandybridge_update_wm(struct drm_device *dev)
 
 	I915_WRITE(WM1_LP_ILK,
 		   WM1_LP_SR_EN |
-		   (SNB_READ_WM1_LATENCY() << WM1_LP_LATENCY_SHIFT) |
+		   (dev_priv->wm.pri_latency[1] << WM1_LP_LATENCY_SHIFT) |
 		   (fbc_wm << WM1_LP_FBC_SHIFT) |
 		   (plane_wm << WM1_LP_SR_SHIFT) |
 		   cursor_wm);
 
 	/* WM2 */
 	if (!ironlake_compute_srwm(dev, 2, enabled,
-				   SNB_READ_WM2_LATENCY() * 500,
+				   dev_priv->wm.pri_latency[2] * 500,
 				   &sandybridge_display_srwm_info,
 				   &sandybridge_cursor_srwm_info,
 				   &fbc_wm, &plane_wm, &cursor_wm))
@@ -1952,14 +1949,14 @@ static void sandybridge_update_wm(struct drm_device *dev)
 
 	I915_WRITE(WM2_LP_ILK,
 		   WM2_LP_EN |
-		   (SNB_READ_WM2_LATENCY() << WM1_LP_LATENCY_SHIFT) |
+		   (dev_priv->wm.pri_latency[2] << WM1_LP_LATENCY_SHIFT) |
 		   (fbc_wm << WM1_LP_FBC_SHIFT) |
 		   (plane_wm << WM1_LP_SR_SHIFT) |
 		   cursor_wm);
 
 	/* WM3 */
 	if (!ironlake_compute_srwm(dev, 3, enabled,
-				   SNB_READ_WM3_LATENCY() * 500,
+				   dev_priv->wm.pri_latency[3] * 500,
 				   &sandybridge_display_srwm_info,
 				   &sandybridge_cursor_srwm_info,
 				   &fbc_wm, &plane_wm, &cursor_wm))
@@ -1967,7 +1964,7 @@ static void sandybridge_update_wm(struct drm_device *dev)
 
 	I915_WRITE(WM3_LP_ILK,
 		   WM3_LP_EN |
-		   (SNB_READ_WM3_LATENCY() << WM1_LP_LATENCY_SHIFT) |
+		   (dev_priv->wm.pri_latency[3] << WM1_LP_LATENCY_SHIFT) |
 		   (fbc_wm << WM1_LP_FBC_SHIFT) |
 		   (plane_wm << WM1_LP_SR_SHIFT) |
 		   cursor_wm);
@@ -1976,7 +1973,7 @@ static void sandybridge_update_wm(struct drm_device *dev)
 static void ivybridge_update_wm(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int latency = SNB_READ_WM0_LATENCY() * 100;	/* In unit 0.1us */
+	int latency = dev_priv->wm.pri_latency[0] * 100;	/* In unit 0.1us */
 	u32 val;
 	int fbc_wm, plane_wm, cursor_wm;
 	int ignore_fbc_wm, ignore_plane_wm, ignore_cursor_wm;
@@ -2046,7 +2043,7 @@ static void ivybridge_update_wm(struct drm_device *dev)
 
 	/* WM1 */
 	if (!ironlake_compute_srwm(dev, 1, enabled,
-				   SNB_READ_WM1_LATENCY() * 500,
+				   dev_priv->wm.pri_latency[1] * 500,
 				   &sandybridge_display_srwm_info,
 				   &sandybridge_cursor_srwm_info,
 				   &fbc_wm, &plane_wm, &cursor_wm))
@@ -2054,14 +2051,14 @@ static void ivybridge_update_wm(struct drm_device *dev)
 
 	I915_WRITE(WM1_LP_ILK,
 		   WM1_LP_SR_EN |
-		   (SNB_READ_WM1_LATENCY() << WM1_LP_LATENCY_SHIFT) |
+		   (dev_priv->wm.pri_latency[1] << WM1_LP_LATENCY_SHIFT) |
 		   (fbc_wm << WM1_LP_FBC_SHIFT) |
 		   (plane_wm << WM1_LP_SR_SHIFT) |
 		   cursor_wm);
 
 	/* WM2 */
 	if (!ironlake_compute_srwm(dev, 2, enabled,
-				   SNB_READ_WM2_LATENCY() * 500,
+				   dev_priv->wm.pri_latency[2] * 500,
 				   &sandybridge_display_srwm_info,
 				   &sandybridge_cursor_srwm_info,
 				   &fbc_wm, &plane_wm, &cursor_wm))
@@ -2069,19 +2066,19 @@ static void ivybridge_update_wm(struct drm_device *dev)
 
 	I915_WRITE(WM2_LP_ILK,
 		   WM2_LP_EN |
-		   (SNB_READ_WM2_LATENCY() << WM1_LP_LATENCY_SHIFT) |
+		   (dev_priv->wm.pri_latency[2] << WM1_LP_LATENCY_SHIFT) |
 		   (fbc_wm << WM1_LP_FBC_SHIFT) |
 		   (plane_wm << WM1_LP_SR_SHIFT) |
 		   cursor_wm);
 
 	/* WM3, note we have to correct the cursor latency */
 	if (!ironlake_compute_srwm(dev, 3, enabled,
-				   SNB_READ_WM3_LATENCY() * 500,
+				   dev_priv->wm.pri_latency[3] * 500,
 				   &sandybridge_display_srwm_info,
 				   &sandybridge_cursor_srwm_info,
 				   &fbc_wm, &plane_wm, &ignore_cursor_wm) ||
 	    !ironlake_compute_srwm(dev, 3, enabled,
-				   2 * SNB_READ_WM3_LATENCY() * 500,
+				   dev_priv->wm.cur_latency[3] * 500,
 				   &sandybridge_display_srwm_info,
 				   &sandybridge_cursor_srwm_info,
 				   &ignore_fbc_wm, &ignore_plane_wm, &cursor_wm))
@@ -2089,7 +2086,7 @@ static void ivybridge_update_wm(struct drm_device *dev)
 
 	I915_WRITE(WM3_LP_ILK,
 		   WM3_LP_EN |
-		   (SNB_READ_WM3_LATENCY() << WM1_LP_LATENCY_SHIFT) |
+		   (dev_priv->wm.pri_latency[3] << WM1_LP_LATENCY_SHIFT) |
 		   (fbc_wm << WM1_LP_FBC_SHIFT) |
 		   (plane_wm << WM1_LP_SR_SHIFT) |
 		   cursor_wm);
@@ -2126,10 +2123,14 @@ static uint32_t ilk_pipe_pixel_rate(struct drm_device *dev,
 	return pixel_rate;
 }
 
+/* latency must be in 0.1us units. */
 static uint32_t ilk_wm_method1(uint32_t pixel_rate, uint8_t bytes_per_pixel,
 			       uint32_t latency)
 {
 	uint64_t ret;
+
+	if (WARN(latency == 0, "Latency value missing\n"))
+		return UINT_MAX;
 
 	ret = (uint64_t) pixel_rate * bytes_per_pixel * latency;
 	ret = DIV_ROUND_UP_ULL(ret, 64 * 10000) + 2;
@@ -2137,11 +2138,15 @@ static uint32_t ilk_wm_method1(uint32_t pixel_rate, uint8_t bytes_per_pixel,
 	return ret;
 }
 
+/* latency must be in 0.1us units. */
 static uint32_t ilk_wm_method2(uint32_t pixel_rate, uint32_t pipe_htotal,
 			       uint32_t horiz_pixels, uint8_t bytes_per_pixel,
 			       uint32_t latency)
 {
 	uint32_t ret;
+
+	if (WARN(latency == 0, "Latency value missing\n"))
+		return UINT_MAX;
 
 	ret = (latency * pixel_rate) / (pipe_htotal * 10000);
 	ret = (ret + 1) * horiz_pixels * bytes_per_pixel;
@@ -2197,7 +2202,10 @@ enum hsw_data_buf_partitioning {
 	HSW_DATA_BUF_PART_5_6,
 };
 
-/* For both WM_PIPE and WM_LP. */
+/*
+ * For both WM_PIPE and WM_LP.
+ * mem_value must be in 0.1us units.
+ */
 static uint32_t ilk_compute_pri_wm(struct hsw_pipe_wm_parameters *params,
 				   uint32_t mem_value,
 				   bool is_lp)
@@ -2224,7 +2232,10 @@ static uint32_t ilk_compute_pri_wm(struct hsw_pipe_wm_parameters *params,
 	return min(method1, method2);
 }
 
-/* For both WM_PIPE and WM_LP. */
+/*
+ * For both WM_PIPE and WM_LP.
+ * mem_value must be in 0.1us units.
+ */
 static uint32_t ilk_compute_spr_wm(struct hsw_pipe_wm_parameters *params,
 				   uint32_t mem_value)
 {
@@ -2244,7 +2255,10 @@ static uint32_t ilk_compute_spr_wm(struct hsw_pipe_wm_parameters *params,
 	return min(method1, method2);
 }
 
-/* For both WM_PIPE and WM_LP. */
+/*
+ * For both WM_PIPE and WM_LP.
+ * mem_value must be in 0.1us units.
+ */
 static uint32_t ilk_compute_cur_wm(struct hsw_pipe_wm_parameters *params,
 				   uint32_t mem_value)
 {
@@ -2270,7 +2284,8 @@ static uint32_t ilk_compute_fbc_wm(struct hsw_pipe_wm_parameters *params,
 			  params->pri_bytes_per_pixel);
 }
 
-static bool hsw_compute_lp_wm(uint32_t mem_value, struct hsw_wm_maximums *max,
+static bool hsw_compute_lp_wm(struct drm_i915_private *dev_priv,
+			      int level, struct hsw_wm_maximums *max,
 			      struct hsw_pipe_wm_parameters *params,
 			      struct hsw_lp_wm_result *result)
 {
@@ -2279,10 +2294,14 @@ static bool hsw_compute_lp_wm(uint32_t mem_value, struct hsw_wm_maximums *max,
 
 	for (pipe = PIPE_A; pipe <= PIPE_C; pipe++) {
 		struct hsw_pipe_wm_parameters *p = &params[pipe];
+		/* WM1+ latency values stored in 0.5us units */
+		uint16_t pri_latency = dev_priv->wm.pri_latency[level] * 5;
+		uint16_t spr_latency = dev_priv->wm.spr_latency[level] * 5;
+		uint16_t cur_latency = dev_priv->wm.cur_latency[level] * 5;
 
-		pri_val[pipe] = ilk_compute_pri_wm(p, mem_value, true);
-		spr_val[pipe] = ilk_compute_spr_wm(p, mem_value);
-		cur_val[pipe] = ilk_compute_cur_wm(p, mem_value);
+		pri_val[pipe] = ilk_compute_pri_wm(p, pri_latency, true);
+		spr_val[pipe] = ilk_compute_spr_wm(p, spr_latency);
+		cur_val[pipe] = ilk_compute_cur_wm(p, cur_latency);
 		fbc_val[pipe] = ilk_compute_fbc_wm(p, pri_val[pipe]);
 	}
 
@@ -2305,14 +2324,18 @@ static bool hsw_compute_lp_wm(uint32_t mem_value, struct hsw_wm_maximums *max,
 }
 
 static uint32_t hsw_compute_wm_pipe(struct drm_i915_private *dev_priv,
-				    uint32_t mem_value, enum pipe pipe,
+				    enum pipe pipe,
 				    struct hsw_pipe_wm_parameters *params)
 {
 	uint32_t pri_val, cur_val, spr_val;
+	/* WM0 latency values stored in 0.1us units */
+	uint16_t pri_latency = dev_priv->wm.pri_latency[0];
+	uint16_t spr_latency = dev_priv->wm.spr_latency[0];
+	uint16_t cur_latency = dev_priv->wm.cur_latency[0];
 
-	pri_val = ilk_compute_pri_wm(params, mem_value, false);
-	spr_val = ilk_compute_spr_wm(params, mem_value);
-	cur_val = ilk_compute_cur_wm(params, mem_value);
+	pri_val = ilk_compute_pri_wm(params, pri_latency, false);
+	spr_val = ilk_compute_spr_wm(params, spr_latency);
+	cur_val = ilk_compute_cur_wm(params, cur_latency);
 
 	WARN(pri_val > 127,
 	     "Primary WM error, mode not supported for pipe %c\n",
@@ -2372,7 +2395,84 @@ static void intel_read_wm_latency(struct drm_device *dev, uint16_t wm[5])
 		wm[1] = (sskpd >> SSKPD_WM1_SHIFT) & SSKPD_WM_MASK;
 		wm[2] = (sskpd >> SSKPD_WM2_SHIFT) & SSKPD_WM_MASK;
 		wm[3] = (sskpd >> SSKPD_WM3_SHIFT) & SSKPD_WM_MASK;
+	} else if (INTEL_INFO(dev)->gen >= 5) {
+		uint32_t mltr = I915_READ(MLTR_ILK);
+
+		/* ILK primary LP0 latency is 700 ns */
+		wm[0] = 7;
+		wm[1] = (mltr >> MLTR_WM1_SHIFT) & ILK_SRLT_MASK;
+		wm[2] = (mltr >> MLTR_WM2_SHIFT) & ILK_SRLT_MASK;
 	}
+}
+
+static void intel_fixup_spr_wm_latency(struct drm_device *dev, uint16_t wm[5])
+{
+	/* ILK sprite LP0 latency is 1300 ns */
+	if (INTEL_INFO(dev)->gen == 5)
+		wm[0] = 13;
+}
+
+static void intel_fixup_cur_wm_latency(struct drm_device *dev, uint16_t wm[5])
+{
+	/* ILK cursor LP0 latency is 1300 ns */
+	if (INTEL_INFO(dev)->gen == 5)
+		wm[0] = 13;
+
+	/* WaDoubleCursorLP3Latency:ivb */
+	if (IS_IVYBRIDGE(dev))
+		wm[3] *= 2;
+}
+
+static void intel_print_wm_latency(struct drm_device *dev,
+				   const char *name,
+				   const uint16_t wm[5])
+{
+	int level, max_level;
+
+	/* how many WM levels are we expecting */
+	if (IS_HASWELL(dev))
+		max_level = 4;
+	else if (INTEL_INFO(dev)->gen >= 6)
+		max_level = 3;
+	else
+		max_level = 2;
+
+	for (level = 0; level <= max_level; level++) {
+		unsigned int latency = wm[level];
+
+		if (latency == 0) {
+			DRM_ERROR("%s WM%d latency not provided\n",
+				  name, level);
+			continue;
+		}
+
+		/* WM1+ latency values in 0.5us units */
+		if (level > 0)
+			latency *= 5;
+
+		DRM_DEBUG_KMS("%s WM%d latency %u (%u.%u usec)\n",
+			      name, level, wm[level],
+			      latency / 10, latency % 10);
+	}
+}
+
+static void intel_setup_wm_latency(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	intel_read_wm_latency(dev, dev_priv->wm.pri_latency);
+
+	memcpy(dev_priv->wm.spr_latency, dev_priv->wm.pri_latency,
+	       sizeof(dev_priv->wm.pri_latency));
+	memcpy(dev_priv->wm.cur_latency, dev_priv->wm.pri_latency,
+	       sizeof(dev_priv->wm.pri_latency));
+
+	intel_fixup_spr_wm_latency(dev, dev_priv->wm.spr_latency);
+	intel_fixup_cur_wm_latency(dev, dev_priv->wm.cur_latency);
+
+	intel_print_wm_latency(dev, "Primary", dev_priv->wm.pri_latency);
+	intel_print_wm_latency(dev, "Sprite", dev_priv->wm.spr_latency);
+	intel_print_wm_latency(dev, "Cursor", dev_priv->wm.cur_latency);
 }
 
 static void hsw_compute_wm_parameters(struct drm_device *dev,
@@ -2438,7 +2538,6 @@ static void hsw_compute_wm_parameters(struct drm_device *dev,
 
 static void hsw_compute_wm_results(struct drm_device *dev,
 				   struct hsw_pipe_wm_parameters *params,
-				   uint16_t *wm,
 				   struct hsw_wm_maximums *lp_maximums,
 				   struct hsw_wm_values *results)
 {
@@ -2449,7 +2548,8 @@ static void hsw_compute_wm_results(struct drm_device *dev,
 	int level, max_level, wm_lp;
 
 	for (level = 1; level <= 4; level++)
-		if (!hsw_compute_lp_wm(wm[level] * 5, lp_maximums, params,
+		if (!hsw_compute_lp_wm(dev_priv, level,
+				       lp_maximums, params,
 				       &lp_results[level - 1]))
 			break;
 	max_level = level - 1;
@@ -2481,8 +2581,7 @@ static void hsw_compute_wm_results(struct drm_device *dev,
 	}
 
 	for_each_pipe(pipe)
-		results->wm_pipe[pipe] = hsw_compute_wm_pipe(dev_priv, wm[0],
-							     pipe,
+		results->wm_pipe[pipe] = hsw_compute_wm_pipe(dev_priv, pipe,
 							     &params[pipe]);
 
 	for_each_pipe(pipe) {
@@ -2620,16 +2719,15 @@ static void haswell_update_wm(struct drm_device *dev)
 	struct hsw_wm_maximums lp_max_1_2, lp_max_5_6;
 	struct hsw_pipe_wm_parameters params[3];
 	struct hsw_wm_values results_1_2, results_5_6, *best_results;
-	uint16_t wm[5] = {};
 	enum hsw_data_buf_partitioning partitioning;
 
-	intel_read_wm_latency(dev, wm);
 	hsw_compute_wm_parameters(dev, params, &lp_max_1_2, &lp_max_5_6);
 
-	hsw_compute_wm_results(dev, params, wm, &lp_max_1_2, &results_1_2);
+	hsw_compute_wm_results(dev, params,
+			       &lp_max_1_2, &results_1_2);
 	if (lp_max_1_2.pri != lp_max_5_6.pri) {
-		hsw_compute_wm_results(dev, params, wm, &lp_max_5_6,
-				       &results_5_6);
+		hsw_compute_wm_results(dev, params,
+				       &lp_max_5_6, &results_5_6);
 		best_results = hsw_find_best_result(&results_1_2, &results_5_6);
 	} else {
 		best_results = &results_1_2;
@@ -2743,7 +2841,7 @@ static void sandybridge_update_sprite_wm(struct drm_device *dev, int pipe,
 					 bool enable, bool scaled)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	int latency = SNB_READ_WM0_LATENCY() * 100;	/* In unit 0.1us */
+	int latency = dev_priv->wm.spr_latency[0] * 100;	/* In unit 0.1us */
 	u32 val;
 	int sprite_wm, reg;
 	int ret;
@@ -2783,7 +2881,7 @@ static void sandybridge_update_sprite_wm(struct drm_device *dev, int pipe,
 	ret = sandybridge_compute_sprite_srwm(dev, pipe, sprite_width,
 					      pixel_size,
 					      &sandybridge_display_srwm_info,
-					      SNB_READ_WM1_LATENCY() * 500,
+					      dev_priv->wm.spr_latency[1] * 500,
 					      &sprite_wm);
 	if (!ret) {
 		DRM_DEBUG_KMS("failed to compute sprite lp1 wm on pipe %c\n",
@@ -2799,7 +2897,7 @@ static void sandybridge_update_sprite_wm(struct drm_device *dev, int pipe,
 	ret = sandybridge_compute_sprite_srwm(dev, pipe, sprite_width,
 					      pixel_size,
 					      &sandybridge_display_srwm_info,
-					      SNB_READ_WM2_LATENCY() * 500,
+					      dev_priv->wm.spr_latency[2] * 500,
 					      &sprite_wm);
 	if (!ret) {
 		DRM_DEBUG_KMS("failed to compute sprite lp2 wm on pipe %c\n",
@@ -2811,7 +2909,7 @@ static void sandybridge_update_sprite_wm(struct drm_device *dev, int pipe,
 	ret = sandybridge_compute_sprite_srwm(dev, pipe, sprite_width,
 					      pixel_size,
 					      &sandybridge_display_srwm_info,
-					      SNB_READ_WM3_LATENCY() * 500,
+					      dev_priv->wm.spr_latency[3] * 500,
 					      &sprite_wm);
 	if (!ret) {
 		DRM_DEBUG_KMS("failed to compute sprite lp3 wm on pipe %c\n",
@@ -5240,8 +5338,12 @@ void intel_init_pm(struct drm_device *dev)
 
 	/* For FIFO watermark updates */
 	if (HAS_PCH_SPLIT(dev)) {
+		intel_setup_wm_latency(dev);
+
 		if (IS_GEN5(dev)) {
-			if (I915_READ(MLTR_ILK) & ILK_SRLT_MASK)
+			if (dev_priv->wm.pri_latency[1] &&
+			    dev_priv->wm.spr_latency[1] &&
+			    dev_priv->wm.cur_latency[1])
 				dev_priv->display.update_wm = ironlake_update_wm;
 			else {
 				DRM_DEBUG_KMS("Failed to get proper latency. "
@@ -5250,7 +5352,9 @@ void intel_init_pm(struct drm_device *dev)
 			}
 			dev_priv->display.init_clock_gating = ironlake_init_clock_gating;
 		} else if (IS_GEN6(dev)) {
-			if (SNB_READ_WM0_LATENCY()) {
+			if (dev_priv->wm.pri_latency[0] &&
+			    dev_priv->wm.spr_latency[0] &&
+			    dev_priv->wm.cur_latency[0]) {
 				dev_priv->display.update_wm = sandybridge_update_wm;
 				dev_priv->display.update_sprite_wm = sandybridge_update_sprite_wm;
 			} else {
@@ -5260,7 +5364,9 @@ void intel_init_pm(struct drm_device *dev)
 			}
 			dev_priv->display.init_clock_gating = gen6_init_clock_gating;
 		} else if (IS_IVYBRIDGE(dev)) {
-			if (SNB_READ_WM0_LATENCY()) {
+			if (dev_priv->wm.pri_latency[0] &&
+			    dev_priv->wm.spr_latency[0] &&
+			    dev_priv->wm.cur_latency[0]) {
 				dev_priv->display.update_wm = ivybridge_update_wm;
 				dev_priv->display.update_sprite_wm = sandybridge_update_sprite_wm;
 			} else {
@@ -5270,7 +5376,9 @@ void intel_init_pm(struct drm_device *dev)
 			}
 			dev_priv->display.init_clock_gating = ivybridge_init_clock_gating;
 		} else if (IS_HASWELL(dev)) {
-			if (I915_READ64(MCH_SSKPD)) {
+			if (dev_priv->wm.pri_latency[0] &&
+			    dev_priv->wm.spr_latency[0] &&
+			    dev_priv->wm.cur_latency[0]) {
 				dev_priv->display.update_wm = haswell_update_wm;
 				dev_priv->display.update_sprite_wm =
 					haswell_update_sprite_wm;
