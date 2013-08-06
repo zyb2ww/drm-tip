@@ -230,6 +230,11 @@ case "$1" in
 			echo "You're on the wrong branch."
 		fi
 		;;
+	apply-resolved|ar)
+		make -j 20 && git add -u && git am --resolved
+		dim_checkpatch HEAD
+		git ca &
+		;;
 	magic-patch|mp)
 		conflict_files=`patch -p1 | grep "saving rejects" | sed -e "s/.*saving rejects to file \(.*\)/\1/"`
 
@@ -372,6 +377,11 @@ case "$1" in
 		magic-patch|mp
 
 		Apply a patch using patch and then wiggle in any conflicts.
+
+		apply-resolved|ar
+
+		Compile-test the current tree and if successfully resolve a
+		confilicted git am. Also runs the patch checker afterwards.
 
 		tc <commit-ish>
 
