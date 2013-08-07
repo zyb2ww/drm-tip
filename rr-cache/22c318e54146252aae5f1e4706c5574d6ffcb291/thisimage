@@ -2182,7 +2182,6 @@ struct hsw_wm_maximums {
 
 struct hsw_lp_wm_result {
 	bool enable;
-	bool fbc_enable;
 	uint32_t pri_val;
 	uint32_t spr_val;
 	uint32_t cur_val;
@@ -2195,11 +2194,6 @@ struct hsw_wm_values {
 	uint32_t wm_lp_spr[3];
 	uint32_t wm_linetime[3];
 	bool enable_fbc_wm;
-};
-
-enum hsw_data_buf_partitioning {
-	HSW_DATA_BUF_PART_1_2,
-	HSW_DATA_BUF_PART_5_6,
 };
 
 /*
@@ -2284,38 +2278,48 @@ static uint32_t ilk_compute_fbc_wm(struct hsw_pipe_wm_parameters *params,
 			  params->pri_bytes_per_pixel);
 }
 
+static void ilk_compute_wm_level(struct drm_i915_private *dev_priv,
+				 int level,
+				 struct hsw_pipe_wm_parameters *p,
+				 struct hsw_lp_wm_result *result)
+{
+	uint16_t pri_latency = dev_priv->wm.pri_latency[level];
+	uint16_t spr_latency = dev_priv->wm.spr_latency[level];
+	uint16_t cur_latency = dev_priv->wm.cur_latency[level];
+
+	/* WM1+ latency values stored in 0.5us units */
+	if (level > 0) {
+		pri_latency *= 5;
+		spr_latency *= 5;
+		cur_latency *= 5;
+	}
+
+	result->pri_val = ilk_compute_pri_wm(p, pri_latency, level);
+	result->spr_val = ilk_compute_spr_wm(p, spr_latency);
+	result->cur_val = ilk_compute_cur_wm(p, cur_latency);
+	result->fbc_val = ilk_compute_fbc_wm(p, result->pri_val);
+	result->enable = true;
+}
+
 static bool hsw_compute_lp_wm(struct drm_i915_private *dev_priv,
 			      int level, struct hsw_wm_maximums *max,
 			      struct hsw_pipe_wm_parameters *params,
 			      struct hsw_lp_wm_result *result)
 {
 	enum pipe pipe;
-	uint32_t pri_val[3], spr_val[3], cur_val[3], fbc_val[3];
+	struct hsw_lp_wm_result res[3];
 
-	for (pipe = PIPE_A; pipe <= PIPE_C; pipe++) {
-		struct hsw_pipe_wm_parameters *p = &params[pipe];
-		/* WM1+ latency values stored in 0.5us units */
-		uint16_t pri_latency = dev_priv->wm.pri_latency[level] * 5;
-		uint16_t spr_latency = dev_priv->wm.spr_latency[level] * 5;
-		uint16_t cur_latency = dev_priv->wm.cur_latency[level] * 5;
+	for (pipe = PIPE_A; pipe <= PIPE_C; pipe++)
+		ilk_compute_wm_level(dev_priv, level, &params[pipe], &res[pipe]);
 
-		pri_val[pipe] = ilk_compute_pri_wm(p, pri_latency, true);
-		spr_val[pipe] = ilk_compute_spr_wm(p, spr_latency);
-		cur_val[pipe] = ilk_compute_cur_wm(p, cur_latency);
-		fbc_val[pipe] = ilk_compute_fbc_wm(p, pri_val[pipe]);
-	}
+	result->pri_val = max3(res[0].pri_val, res[1].pri_val, res[2].pri_val);
+	result->spr_val = max3(res[0].spr_val, res[1].spr_val, res[2].spr_val);
+	result->cur_val = max3(res[0].cur_val, res[1].cur_val, res[2].cur_val);
+	result->fbc_val = max3(res[0].fbc_val, res[1].fbc_val, res[2].fbc_val);
+	result->enable = true;
 
-	result->pri_val = max3(pri_val[0], pri_val[1], pri_val[2]);
-	result->spr_val = max3(spr_val[0], spr_val[1], spr_val[2]);
-	result->cur_val = max3(cur_val[0], cur_val[1], cur_val[2]);
-	result->fbc_val = max3(fbc_val[0], fbc_val[1], fbc_val[2]);
-
-	if (result->fbc_val > max->fbc) {
-		result->fbc_enable = false;
-		result->fbc_val = 0;
-	} else {
-		result->fbc_enable = true;
-	}
+	if (!result->enable)
+		return false;
 
 	result->enable = result->pri_val <= max->pri &&
 			 result->spr_val <= max->spr &&
@@ -2558,9 +2562,9 @@ static void hsw_compute_wm_results(struct drm_device *dev,
 	 * a WM level. */
 	results->enable_fbc_wm = true;
 	for (level = 1; level <= max_level; level++) {
-		if (!lp_results[level - 1].fbc_enable) {
+		if (!lp_results[level - 1].fbc_val > lp_maximums->fbc) {
 			results->enable_fbc_wm = false;
-			break;
+			lp_results[level - 1].fbc_val = 0;
 		}
 	}
 
@@ -2622,11 +2626,11 @@ static struct hsw_wm_values *hsw_find_best_result(struct hsw_wm_values *r1,
  */
 static void hsw_write_wm_values(struct drm_i915_private *dev_priv,
 				struct hsw_wm_values *results,
-				enum hsw_data_buf_partitioning partitioning)
+				enum intel_ddb_partitioning partitioning)
 {
 	struct hsw_wm_values previous;
 	uint32_t val;
-	enum hsw_data_buf_partitioning prev_partitioning;
+	enum intel_ddb_partitioning prev_partitioning;
 	bool prev_enable_fbc_wm;
 
 	previous.wm_pipe[0] = I915_READ(WM0_PIPEA_ILK);
@@ -2643,7 +2647,7 @@ static void hsw_write_wm_values(struct drm_i915_private *dev_priv,
 	previous.wm_linetime[2] = I915_READ(PIPE_WM_LINETIME(PIPE_C));
 
 	prev_partitioning = (I915_READ(WM_MISC) & WM_MISC_DATA_PARTITION_5_6) ?
-			    HSW_DATA_BUF_PART_5_6 : HSW_DATA_BUF_PART_1_2;
+				INTEL_DDB_PART_5_6 : INTEL_DDB_PART_1_2;
 
 	prev_enable_fbc_wm = !(I915_READ(DISP_ARB_CTL) & DISP_FBC_WM_DIS);
 
@@ -2682,7 +2686,7 @@ static void hsw_write_wm_values(struct drm_i915_private *dev_priv,
 
 	if (prev_partitioning != partitioning) {
 		val = I915_READ(WM_MISC);
-		if (partitioning == HSW_DATA_BUF_PART_1_2)
+		if (partitioning == INTEL_DDB_PART_1_2)
 			val &= ~WM_MISC_DATA_PARTITION_5_6;
 		else
 			val |= WM_MISC_DATA_PARTITION_5_6;
@@ -2719,7 +2723,7 @@ static void haswell_update_wm(struct drm_device *dev)
 	struct hsw_wm_maximums lp_max_1_2, lp_max_5_6;
 	struct hsw_pipe_wm_parameters params[3];
 	struct hsw_wm_values results_1_2, results_5_6, *best_results;
-	enum hsw_data_buf_partitioning partitioning;
+	enum intel_ddb_partitioning partitioning;
 
 	hsw_compute_wm_parameters(dev, params, &lp_max_1_2, &lp_max_5_6);
 
@@ -2734,7 +2738,7 @@ static void haswell_update_wm(struct drm_device *dev)
 	}
 
 	partitioning = (best_results == &results_1_2) ?
-		       HSW_DATA_BUF_PART_1_2 : HSW_DATA_BUF_PART_5_6;
+		       INTEL_DDB_PART_1_2 : INTEL_DDB_PART_5_6;
 
 	hsw_write_wm_values(dev_priv, best_results, partitioning);
 }
@@ -2838,7 +2842,7 @@ sandybridge_compute_sprite_srwm(struct drm_device *dev, int plane,
 
 static void sandybridge_update_sprite_wm(struct drm_device *dev, int pipe,
 					 uint32_t sprite_width, int pixel_size,
-					 bool enable, bool scaled)
+					 bool enabled, bool scaled)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int latency = dev_priv->wm.spr_latency[0] * 100;	/* In unit 0.1us */
@@ -2846,7 +2850,7 @@ static void sandybridge_update_sprite_wm(struct drm_device *dev, int pipe,
 	int sprite_wm, reg;
 	int ret;
 
-	if (!enable)
+	if (!enabled)
 		return;
 
 	switch (pipe) {
@@ -2961,13 +2965,13 @@ void intel_update_watermarks(struct drm_device *dev)
 
 void intel_update_sprite_watermarks(struct drm_device *dev, int pipe,
 				    uint32_t sprite_width, int pixel_size,
-				    bool enable, bool scaled)
+				    bool enabled, bool scaled)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
 	if (dev_priv->display.update_sprite_wm)
 		dev_priv->display.update_sprite_wm(dev, pipe, sprite_width,
-						   pixel_size, enable, scaled);
+						   pixel_size, enabled, scaled);
 }
 
 static struct drm_i915_gem_object *
