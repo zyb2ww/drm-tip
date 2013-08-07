@@ -1,0 +1,14 @@
+diff --git a/drivers/gpu/drm/i915/i915_gem_stolen.c b/drivers/gpu/drm/i915/i915_gem_stolen.c
+index 0d0a3b1..ba4dabc 100644
+--- a/drivers/gpu/drm/i915/i915_gem_stolen.c
++++ b/drivers/gpu/drm/i915/i915_gem_stolen.c
+@@ -423,7 +423,8 @@ i915_gem_object_create_stolen_for_preallocated(struct drm_device *dev,
+ 	return obj;
+ 
+ err_out:
+-	drm_mm_put_block(stolen);
++	drm_mm_remove_node(stolen);
++	kfree(stolen);
+ 	drm_gem_object_unreference(&obj->base);
+ 	return NULL;
+ }
