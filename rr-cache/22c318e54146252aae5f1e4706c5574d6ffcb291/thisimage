@@ -2162,15 +2162,11 @@ static uint32_t ilk_wm_fbc(uint32_t pri_val, uint32_t horiz_pixels,
 
 struct hsw_pipe_wm_parameters {
 	bool active;
-	bool sprite_enabled;
-	uint8_t pri_bytes_per_pixel;
-	uint8_t spr_bytes_per_pixel;
-	uint8_t cur_bytes_per_pixel;
-	uint32_t pri_horiz_pixels;
-	uint32_t spr_horiz_pixels;
-	uint32_t cur_horiz_pixels;
 	uint32_t pipe_htotal;
 	uint32_t pixel_rate;
+	struct intel_plane_wm_parameters pri;
+	struct intel_plane_wm_parameters spr;
+	struct intel_plane_wm_parameters cur;
 };
 
 struct hsw_wm_maximums {
@@ -2180,20 +2176,20 @@ struct hsw_wm_maximums {
 	uint16_t fbc;
 };
 
-struct hsw_lp_wm_result {
-	bool enable;
-	uint32_t pri_val;
-	uint32_t spr_val;
-	uint32_t cur_val;
-	uint32_t fbc_val;
-};
-
 struct hsw_wm_values {
 	uint32_t wm_pipe[3];
 	uint32_t wm_lp[3];
 	uint32_t wm_lp_spr[3];
 	uint32_t wm_linetime[3];
 	bool enable_fbc_wm;
+};
+
+/* used in computing the new watermarks state */
+struct intel_wm_config {
+	unsigned int num_pipes_active;
+	bool sprites_enabled;
+	bool sprites_scaled;
+	bool fbc_wm_enabled;
 };
 
 /*
@@ -2206,12 +2202,11 @@ static uint32_t ilk_compute_pri_wm(struct hsw_pipe_wm_parameters *params,
 {
 	uint32_t method1, method2;
 
-	/* TODO: for now, assume the primary plane is always enabled. */
-	if (!params->active)
+	if (!params->active || !params->pri.enabled)
 		return 0;
 
 	method1 = ilk_wm_method1(params->pixel_rate,
-				 params->pri_bytes_per_pixel,
+				 params->pri.bytes_per_pixel,
 				 mem_value);
 
 	if (!is_lp)
@@ -2219,8 +2214,8 @@ static uint32_t ilk_compute_pri_wm(struct hsw_pipe_wm_parameters *params,
 
 	method2 = ilk_wm_method2(params->pixel_rate,
 				 params->pipe_htotal,
-				 params->pri_horiz_pixels,
-				 params->pri_bytes_per_pixel,
+				 params->pri.horiz_pixels,
+				 params->pri.bytes_per_pixel,
 				 mem_value);
 
 	return min(method1, method2);
@@ -2235,16 +2230,16 @@ static uint32_t ilk_compute_spr_wm(struct hsw_pipe_wm_parameters *params,
 {
 	uint32_t method1, method2;
 
-	if (!params->active || !params->sprite_enabled)
+	if (!params->active || !params->spr.enabled)
 		return 0;
 
 	method1 = ilk_wm_method1(params->pixel_rate,
-				 params->spr_bytes_per_pixel,
+				 params->spr.bytes_per_pixel,
 				 mem_value);
 	method2 = ilk_wm_method2(params->pixel_rate,
 				 params->pipe_htotal,
-				 params->spr_horiz_pixels,
-				 params->spr_bytes_per_pixel,
+				 params->spr.horiz_pixels,
+				 params->spr.bytes_per_pixel,
 				 mem_value);
 	return min(method1, method2);
 }
@@ -2256,13 +2251,13 @@ static uint32_t ilk_compute_spr_wm(struct hsw_pipe_wm_parameters *params,
 static uint32_t ilk_compute_cur_wm(struct hsw_pipe_wm_parameters *params,
 				   uint32_t mem_value)
 {
-	if (!params->active)
+	if (!params->active || !params->cur.enabled)
 		return 0;
 
 	return ilk_wm_method2(params->pixel_rate,
 			      params->pipe_htotal,
-			      params->cur_horiz_pixels,
-			      params->cur_bytes_per_pixel,
+			      params->cur.horiz_pixels,
+			      params->cur.bytes_per_pixel,
 			      mem_value);
 }
 
@@ -2270,18 +2265,156 @@ static uint32_t ilk_compute_cur_wm(struct hsw_pipe_wm_parameters *params,
 static uint32_t ilk_compute_fbc_wm(struct hsw_pipe_wm_parameters *params,
 				   uint32_t pri_val)
 {
-	if (!params->active)
+	if (!params->active || !params->pri.enabled)
 		return 0;
 
 	return ilk_wm_fbc(pri_val,
-			  params->pri_horiz_pixels,
-			  params->pri_bytes_per_pixel);
+			  params->pri.horiz_pixels,
+			  params->pri.bytes_per_pixel);
+}
+
+static unsigned int ilk_display_fifo_size(const struct drm_device *dev)
+{
+	if (INTEL_INFO(dev)->gen >= 7)
+		return 768;
+	else
+		return 512;
+}
+
+/* Calculate the maximum primary/sprite plane watermark */
+static unsigned int ilk_plane_wm_max(const struct drm_device *dev,
+				     int level,
+				     const struct intel_wm_config *config,
+				     enum intel_ddb_partitioning ddb_partitioning,
+				     bool is_sprite)
+{
+	unsigned int fifo_size = ilk_display_fifo_size(dev);
+	unsigned int max;
+
+	/* if sprites aren't enabled, sprites get nothing */
+	if (is_sprite && !config->sprites_enabled)
+		return 0;
+
+	/* HSW allows LP1+ watermarks even with multiple pipes */
+	if (level == 0 || config->num_pipes_active > 1) {
+		fifo_size /= INTEL_INFO(dev)->num_pipes;
+
+		/*
+		 * For some reason the non self refresh
+		 * FIFO size is only half of the self
+		 * refresh FIFO size on ILK/SNB.
+		 */
+		if (INTEL_INFO(dev)->gen <= 6)
+			fifo_size /= 2;
+	}
+
+	if (config->sprites_enabled) {
+		/* level 0 is always calculated with 1:1 split */
+		if (level > 0 && ddb_partitioning == INTEL_DDB_PART_5_6) {
+			if (is_sprite)
+				fifo_size *= 5;
+			fifo_size /= 6;
+		} else {
+			fifo_size /= 2;
+		}
+	}
+
+	/* clamp to max that the registers can hold */
+	if (INTEL_INFO(dev)->gen >= 7)
+		/* IVB/HSW primary/sprite plane watermarks */
+		max = level == 0 ? 127 : 1023;
+	else if (!is_sprite)
+		/* ILK/SNB primary plane watermarks */
+		max = level == 0 ? 127 : 511;
+	else
+		/* ILK/SNB sprite plane watermarks */
+		max = level == 0 ? 63 : 255;
+
+	return min(fifo_size, max);
+}
+
+/* Calculate the maximum cursor plane watermark */
+static unsigned int ilk_cursor_wm_max(const struct drm_device *dev,
+				      int level,
+				      const struct intel_wm_config *config)
+{
+	/* HSW LP1+ watermarks w/ multiple pipes */
+	if (level > 0 && config->num_pipes_active > 1)
+		return 64;
+
+	/* otherwise just report max that registers can hold */
+	if (INTEL_INFO(dev)->gen >= 7)
+		return level == 0 ? 63 : 255;
+	else
+		return level == 0 ? 31 : 63;
+}
+
+/* Calculate the maximum FBC watermark */
+static unsigned int ilk_fbc_wm_max(void)
+{
+	/* max that registers can hold */
+	return 15;
+}
+
+static void ilk_wm_max(struct drm_device *dev,
+		       int level,
+		       const struct intel_wm_config *config,
+		       enum intel_ddb_partitioning ddb_partitioning,
+		       struct hsw_wm_maximums *max)
+{
+	max->pri = ilk_plane_wm_max(dev, level, config, ddb_partitioning, false);
+	max->spr = ilk_plane_wm_max(dev, level, config, ddb_partitioning, true);
+	max->cur = ilk_cursor_wm_max(dev, level, config);
+	max->fbc = ilk_fbc_wm_max();
+}
+
+static bool ilk_check_wm(int level,
+			 const struct hsw_wm_maximums *max,
+			 struct intel_wm_level *result)
+{
+	bool ret;
+
+	/* already determined to be invalid? */
+	if (!result->enable)
+		return false;
+
+	result->enable = result->pri_val <= max->pri &&
+			 result->spr_val <= max->spr &&
+			 result->cur_val <= max->cur;
+
+	ret = result->enable;
+
+	/*
+	 * HACK until we can pre-compute everything,
+	 * and thus fail gracefully if LP0 watermarks
+	 * are exceeded...
+	 */
+	if (level == 0 && !result->enable) {
+		if (result->pri_val > max->pri)
+			DRM_DEBUG_KMS("Primary WM%d too large %u (max %u)\n",
+				      level, result->pri_val, max->pri);
+		if (result->spr_val > max->spr)
+			DRM_DEBUG_KMS("Sprite WM%d too large %u (max %u)\n",
+				      level, result->spr_val, max->spr);
+		if (result->cur_val > max->cur)
+			DRM_DEBUG_KMS("Cursor WM%d too large %u (max %u)\n",
+				      level, result->cur_val, max->cur);
+
+		result->pri_val = min_t(uint32_t, result->pri_val, max->pri);
+		result->spr_val = min_t(uint32_t, result->spr_val, max->spr);
+		result->cur_val = min_t(uint32_t, result->cur_val, max->cur);
+		result->enable = true;
+	}
+
+	DRM_DEBUG_KMS("WM%d: %sabled\n", level, result->enable ? "en" : "dis");
+
+	return ret;
 }
 
 static void ilk_compute_wm_level(struct drm_i915_private *dev_priv,
 				 int level,
 				 struct hsw_pipe_wm_parameters *p,
-				 struct hsw_lp_wm_result *result)
+				 struct intel_wm_level *result)
 {
 	uint16_t pri_latency = dev_priv->wm.pri_latency[level];
 	uint16_t spr_latency = dev_priv->wm.spr_latency[level];
@@ -2304,10 +2437,10 @@ static void ilk_compute_wm_level(struct drm_i915_private *dev_priv,
 static bool hsw_compute_lp_wm(struct drm_i915_private *dev_priv,
 			      int level, struct hsw_wm_maximums *max,
 			      struct hsw_pipe_wm_parameters *params,
-			      struct hsw_lp_wm_result *result)
+			      struct intel_wm_level *result)
 {
 	enum pipe pipe;
-	struct hsw_lp_wm_result res[3];
+	struct intel_wm_level res[3];
 
 	for (pipe = PIPE_A; pipe <= PIPE_C; pipe++)
 		ilk_compute_wm_level(dev_priv, level, &params[pipe], &res[pipe]);
@@ -2318,13 +2451,7 @@ static bool hsw_compute_lp_wm(struct drm_i915_private *dev_priv,
 	result->fbc_val = max3(res[0].fbc_val, res[1].fbc_val, res[2].fbc_val);
 	result->enable = true;
 
-	if (!result->enable)
-		return false;
-
-	result->enable = result->pri_val <= max->pri &&
-			 result->spr_val <= max->spr &&
-			 result->cur_val <= max->cur;
-	return result->enable;
+	return ilk_check_wm(level, max, result);
 }
 
 static uint32_t hsw_compute_wm_pipe(struct drm_i915_private *dev_priv,
@@ -2487,7 +2614,7 @@ static void hsw_compute_wm_parameters(struct drm_device *dev,
 	struct drm_crtc *crtc;
 	struct drm_plane *plane;
 	enum pipe pipe;
-	int pipes_active = 0, sprites_enabled = 0;
+	struct intel_wm_config config = {};
 
 	list_for_each_entry(crtc, &dev->mode_config.crtc_list, head) {
 		struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
@@ -2500,15 +2627,18 @@ static void hsw_compute_wm_parameters(struct drm_device *dev,
 		if (!p->active)
 			continue;
 
-		pipes_active++;
+		config.num_pipes_active++;
 
 		p->pipe_htotal = intel_crtc->config.adjusted_mode.htotal;
 		p->pixel_rate = ilk_pipe_pixel_rate(dev, crtc);
-		p->pri_bytes_per_pixel = crtc->fb->bits_per_pixel / 8;
-		p->cur_bytes_per_pixel = 4;
-		p->pri_horiz_pixels =
+		p->pri.bytes_per_pixel = crtc->fb->bits_per_pixel / 8;
+		p->cur.bytes_per_pixel = 4;
+		p->pri.horiz_pixels =
 			intel_crtc->config.requested_mode.hdisplay;
-		p->cur_horiz_pixels = 64;
+		p->cur.horiz_pixels = 64;
+		/* TODO: for now, assume primary and cursor planes are always enabled. */
+		p->pri.enabled = true;
+		p->cur.enabled = true;
 	}
 
 	list_for_each_entry(plane, &dev->mode_config.plane_list, head) {
@@ -2518,26 +2648,19 @@ static void hsw_compute_wm_parameters(struct drm_device *dev,
 		pipe = intel_plane->pipe;
 		p = &params[pipe];
 
-		p->sprite_enabled = intel_plane->wm.enabled;
-		p->spr_bytes_per_pixel = intel_plane->wm.bytes_per_pixel;
-		p->spr_horiz_pixels = intel_plane->wm.horiz_pixels;
+		p->spr = intel_plane->wm;
 
-		if (p->sprite_enabled)
-			sprites_enabled++;
+		config.sprites_enabled |= p->spr.enabled;
+		config.sprites_scaled |= p->spr.scaled;
 	}
 
-	if (pipes_active > 1) {
-		lp_max_1_2->pri = lp_max_5_6->pri = sprites_enabled ? 128 : 256;
-		lp_max_1_2->spr = lp_max_5_6->spr = 128;
-		lp_max_1_2->cur = lp_max_5_6->cur = 64;
-	} else {
-		lp_max_1_2->pri = sprites_enabled ? 384 : 768;
-		lp_max_5_6->pri = sprites_enabled ? 128 : 768;
-		lp_max_1_2->spr = 384;
-		lp_max_5_6->spr = 640;
-		lp_max_1_2->cur = lp_max_5_6->cur = 255;
-	}
-	lp_max_1_2->fbc = lp_max_5_6->fbc = 15;
+	ilk_wm_max(dev, 1, &config, INTEL_DDB_PART_1_2, lp_max_1_2);
+
+	/* 5/6 split only in single pipe config on IVB+ */
+	if (INTEL_INFO(dev)->gen >= 7 && config.num_pipes_active <= 1)
+		ilk_wm_max(dev, 1, &config, INTEL_DDB_PART_5_6, lp_max_5_6);
+	else
+		*lp_max_5_6 = *lp_max_1_2;
 }
 
 static void hsw_compute_wm_results(struct drm_device *dev,
@@ -2547,7 +2670,7 @@ static void hsw_compute_wm_results(struct drm_device *dev,
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_crtc *crtc;
-	struct hsw_lp_wm_result lp_results[4] = {};
+	struct intel_wm_level lp_results[4] = {};
 	enum pipe pipe;
 	int level, max_level, wm_lp;
 
@@ -2570,7 +2693,7 @@ static void hsw_compute_wm_results(struct drm_device *dev,
 
 	memset(results, 0, sizeof(*results));
 	for (wm_lp = 1; wm_lp <= 3; wm_lp++) {
-		const struct hsw_lp_wm_result *r;
+		const struct intel_wm_level *r;
 
 		level = (max_level == 4 && wm_lp > 1) ? wm_lp + 1 : wm_lp;
 		if (level > max_level)
@@ -2743,25 +2866,19 @@ static void haswell_update_wm(struct drm_device *dev)
 	hsw_write_wm_values(dev_priv, best_results, partitioning);
 }
 
-static void haswell_update_sprite_wm(struct drm_device *dev, int pipe,
+static void haswell_update_sprite_wm(struct drm_plane *plane,
+				     struct drm_crtc *crtc,
 				     uint32_t sprite_width, int pixel_size,
 				     bool enabled, bool scaled)
 {
-	struct drm_plane *plane;
+	struct intel_plane *intel_plane = to_intel_plane(plane);
 
-	list_for_each_entry(plane, &dev->mode_config.plane_list, head) {
-		struct intel_plane *intel_plane = to_intel_plane(plane);
+	intel_plane->wm.enabled = enabled;
+	intel_plane->wm.scaled = scaled;
+	intel_plane->wm.horiz_pixels = sprite_width;
+	intel_plane->wm.bytes_per_pixel = pixel_size;
 
-		if (intel_plane->pipe == pipe) {
-			intel_plane->wm.enabled = enabled;
-			intel_plane->wm.scaled = scaled;
-			intel_plane->wm.horiz_pixels = sprite_width;
-			intel_plane->wm.bytes_per_pixel = pixel_size;
-			break;
-		}
-	}
-
-	haswell_update_wm(dev);
+	haswell_update_wm(plane->dev);
 }
 
 static bool
@@ -2840,11 +2957,14 @@ sandybridge_compute_sprite_srwm(struct drm_device *dev, int plane,
 	return *sprite_wm > 0x3ff ? false : true;
 }
 
-static void sandybridge_update_sprite_wm(struct drm_device *dev, int pipe,
+static void sandybridge_update_sprite_wm(struct drm_plane *plane,
+					 struct drm_crtc *crtc,
 					 uint32_t sprite_width, int pixel_size,
 					 bool enabled, bool scaled)
 {
+	struct drm_device *dev = plane->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	int pipe = to_intel_plane(plane)->pipe;
 	int latency = dev_priv->wm.spr_latency[0] * 100;	/* In unit 0.1us */
 	u32 val;
 	int sprite_wm, reg;
@@ -2963,14 +3083,15 @@ void intel_update_watermarks(struct drm_device *dev)
 		dev_priv->display.update_wm(dev);
 }
 
-void intel_update_sprite_watermarks(struct drm_device *dev, int pipe,
+void intel_update_sprite_watermarks(struct drm_plane *plane,
+				    struct drm_crtc *crtc,
 				    uint32_t sprite_width, int pixel_size,
 				    bool enabled, bool scaled)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv = plane->dev->dev_private;
 
 	if (dev_priv->display.update_sprite_wm)
-		dev_priv->display.update_sprite_wm(dev, pipe, sprite_width,
+		dev_priv->display.update_sprite_wm(plane, crtc, sprite_width,
 						   pixel_size, enabled, scaled);
 }
 
