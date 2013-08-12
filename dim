@@ -314,7 +314,7 @@ case "$1" in
 		echo $patches patches merged, referencing $bugs reported issues and fixing $regression regressions
 		pulls=`git log --grep='Merge \(branch\|tag\).*danvet' "$since" --pretty=oneline airlied/drm-next | wc -l`
 		echo $pulls pull requests merged by upstream drm maintainer Dave Airlie
-		nexts=`git log danvet/drm-intel-nightly --decorate "$since" | grep "tag: drm-intel-next" | wc -l`
+		nexts=`git log danvet/drm-intel-nightly --decorate "$since" | grep "tag: drm-intel-next-[0-9-]*[,)]" | wc -l`
 		echo $nexts drm-intel-next feature slices sent off to QA for extended manual testing
 
 		kernel_patches=`git log danvet/drm-intel-nightly --author="Daniel Vetter" "$since" --pretty=oneline | wc -l`
