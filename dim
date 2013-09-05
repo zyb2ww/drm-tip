@@ -12,8 +12,9 @@ function update_linux_next
 	if git grep "EXTRAVERSION.*=" origin/master Makefile | grep rc > /dev/null ; then
 		echo linux-next: -rc phase
 		if [[ $1 == queued ]] ; then
-			echo Updating for-linux-next to -queued
+			echo Updating for-linux-next to -queued and updating for-linux-next-fixes
 			git push danvet +drm-intel-next-queued:for-linux-next >& /dev/null
+			git push danvet +drm-intel-fixes:for-linux-next-fixes >& /dev/null
 		fi
 	else
 		echo linux-next: merge window
@@ -268,9 +269,6 @@ case "$1" in
 		fi
 		echo Using $upstream as the upstream
 		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-next > ~/tmp/dim-pull-request
-		# stupid request-pull script picks the first remote branch that
-		# matches, and drm-intel-next comes before for-airlied :(
-		#sed -ie 's/drm-intel-next$/for-airlied/' ~/tmp/dim-pull-request
 		;;
 	pull-request-fixes)
 		today=`date +%Y-%m-%d`
