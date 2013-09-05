@@ -186,7 +186,8 @@ case "$1" in
 		;;
 	push-queued|pq)
 		if git branch | grep drm-intel-next-queued | grep '\*' ; then
-			git push danvet	drm-intel-next-queued
+			shift
+			git push danvet	drm-intel-next-queued $@
 
 			update_nightly
 			update_linux_next queued
@@ -196,7 +197,8 @@ case "$1" in
 		;;
 	push-fixes|pf)
 		if git branch | grep drm-intel-fixes | grep '\*' ; then
-			git push danvet	drm-intel-fixes
+			shift
+			git push danvet	drm-intel-fixes  $@
 
 			update_nightly
 			update_linux_next fixes
