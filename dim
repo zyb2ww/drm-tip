@@ -349,11 +349,6 @@ case "$1" in
 
 		Updates all maintainer branches.
 
-		update-next
-
-		Pushes out the current next, tags it and pushed the tag. Then
-		updatest -testing to latest -nightly.
-
 		push-queued|pq
 		push-fixes|pf
 
