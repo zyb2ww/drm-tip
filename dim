@@ -184,6 +184,8 @@ case "$1" in
 		git rebase -i danvet/drm-intel-next-queued
 		dim cof
 		git rebase -i danvet/drm-intel-fixes
+		# TODO: Restore -nightly merge state from the rerere-cache
+		# branch
 		;;
 	push-queued|pq)
 		if git branch | grep drm-intel-next-queued | grep '\*' ; then
@@ -284,12 +286,18 @@ case "$1" in
 	update-next)
 		today=`date +%Y-%m-%d`
 		cd ~/linux/src
-		gitk drm-intel-next-queued ^airlied/drm-next
-		# TODO compare drm-intel-queued with upstream branch
-		if git log drm-intel-next-queued...danvet/drm-intel-next-queued | grep commit ; then
-			echo "drm-intel-next-queued is not up to date"
-			exit 1
+		git fetch danvet
+		if ! git branch --merged danvet/drm-intel-nightly | grep drm-intel-fixes &> /dev/null ; then
+			echo "drm-intel-fixes not merged into -nigthly, please update!"
+			exit 2
 		fi
+		if ! git branch --merged danvet/drm-intel-nightly | grep drm-intel-next-queued &> /dev/null ; then
+			echo "drm-intel-next-queued not merged into -nigthly, please update!"
+			exit 2
+		fi
+
+		gitk drm-intel-next-queued ^airlied/drm-next
+
 		git push danvet drm-intel-next-queued:drm-intel-next
 		git tag -f drm-intel-next-$today danvet/drm-intel-next
 		git push -f danvet drm-intel-next-$today
@@ -396,7 +404,7 @@ case "$1" in
 		defaults to origin/master, the upstream for -next defaults to
 		airlied/drm-next
 
-		Since thag for -fixes is based only on the day (and not the
+		Since the tag for -fixes is based only on the day (and not the
 		exact time) and there's not tag being pushed for -next the pull
 		request can be regenerated with the same commands if the
 		upstream was wrong.
@@ -408,8 +416,8 @@ case "$1" in
 		overview a gitk view of the currently unmerged feature pile is
 		opened.
 
-		Note that the user should first ensure that the current -nightly
-		matches the current dinq
+		Also checks that the drm-intel-fixes|-next-queued are fully
+		merged into -nightly to avoid operator error.
 
 		checker
 
