@@ -8100,7 +8100,7 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	     fb->pitches[0] != crtc->fb->pitches[0]))
 		return -EINVAL;
 
-	work = kzalloc(sizeof *work, GFP_KERNEL);
+	work = kzalloc(sizeof(*work), GFP_KERNEL);
 	if (work == NULL)
 		return -ENOMEM;
 
@@ -9055,7 +9055,7 @@ static int __intel_set_mode(struct drm_crtc *crtc,
 	unsigned disable_pipes, prepare_pipes, modeset_pipes;
 	int ret = 0;
 
-	saved_mode = kmalloc(2 * sizeof(*saved_mode), GFP_KERNEL);
+	saved_mode = kcalloc(2, sizeof(*saved_mode), GFP_KERNEL);
 	if (!saved_mode)
 		return -ENOMEM;
 	saved_hwmode = saved_mode + 1;
@@ -9594,7 +9594,7 @@ static void intel_crtc_init(struct drm_device *dev, int pipe)
 	struct intel_crtc *intel_crtc;
 	int i;
 
-	intel_crtc = kzalloc(sizeof(struct intel_crtc) + (INTELFB_CONN_LIMIT * sizeof(struct drm_connector *)), GFP_KERNEL);
+	intel_crtc = kzalloc(sizeof(*intel_crtc), GFP_KERNEL);
 	if (intel_crtc == NULL)
 		return;
 
