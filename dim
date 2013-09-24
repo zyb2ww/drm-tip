@@ -124,7 +124,7 @@ function check_repo_clean
 
 function dim_checkpatch # $1 is the git sha1 to check
 {
-	git show $1 --pretty=email | scripts/checkpatch.pl  - || true
+	git show $1 --pretty=email | scripts/checkpatch.pl --strict - || true
 	git show $1 | grep '^\+.*\WBUG' > /dev/null && echo -e "\n\nWARNING: New BUG macro added\n" || true
 	git show $1 | grep '^\+.*drm_i915_private_t' > /dev/null && echo -e "\n\nWARNING: New drm_i915_private_t added\n" || true
 }
