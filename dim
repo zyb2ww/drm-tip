@@ -157,6 +157,19 @@ function prep_testing # $1 kernel branch to test
 
 }
 
+function prep_pull_mail
+{
+	cat > ~/tmp/dim-pull-request <<-HERE
+	Hi Dave,
+
+	<insert pull request overview here>
+
+	Cheers, Daniel
+
+
+	HERE
+}
+
 cd ~/linux/src
 
 case "$1" in
@@ -270,7 +283,9 @@ case "$1" in
 			upstream=$2
 		fi
 		echo Using $upstream as the upstream
-		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-next > ~/tmp/dim-pull-request
+		prep_pull_mail
+		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-next >> ~/tmp/dim-pull-request
+		mutt -s '[PULL] drm-intel-next' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
 		;;
 	pull-request-fixes)
 		today=`date +%Y-%m-%d`
@@ -281,7 +296,9 @@ case "$1" in
 		echo Using $upstream as the upstream
 		git tag -f drm-intel-fixes-$today danvet/drm-intel-fixes
 		git push -f danvet drm-intel-fixes-$today
-		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-fixes > ~/tmp/dim-pull-request
+		prep_pull_mail
+		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-fixes >> ~/tmp/dim-pull-request
+		mutt -s '[PULL] drm-intel-next' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
 		;;
 	update-next)
 		today=`date +%Y-%m-%d`
@@ -408,6 +425,9 @@ case "$1" in
 		exact time) and there's not tag being pushed for -next the pull
 		request can be regenerated with the same commands if the
 		upstream was wrong.
+
+		Then fires up mutt with the pre-generated email with subject and
+		recipients already set.
 
 		update-next
 
