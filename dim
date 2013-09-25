@@ -267,6 +267,13 @@ case "$1" in
 			wiggle -r ${file%.rej} $file || true
 		done
 		;;
+	magic-rebase-resolve|mrr)
+		git reset --hard
+		cat .git/rebase-merge/patch | dim mp
+		make -j 20
+		git add -u
+		git rebase --continue
+		;;
 	tc)
 		git tag --contains $2 | grep ^v | sort -V | head -n 1
 		;;
@@ -397,6 +404,12 @@ case "$1" in
 		magic-patch|mp
 
 		Apply a patch using patch and then wiggle in any conflicts.
+
+		magic-rebase-resolve|mrr
+
+		Tries to resolve a rebase conflict by first resetting the tree
+		and the using the magic patch tool. Then builds the tree, adds
+		any changes with git add -u and continues the rebase.
 
 		apply-resolved|ar
 
