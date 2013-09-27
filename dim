@@ -5,6 +5,8 @@
 # fail on any goof-up
 set -e
 
+today=`date +%Y-%m-%d`
+
 function update_linux_next
 {
 	cd ~/linux/src
@@ -157,6 +159,29 @@ function prep_testing # $1 kernel branch to test
 
 }
 
+function prep_pull_mail_tags
+{
+	cat > ~/tmp/dim-pull-request <<-HERE
+	Hi Dave,
+
+	HERE
+
+	for tag in $@ ; do
+		obj=`git rev-parse $tag`
+		if [[ `git cat-file -t $obj` == "tag" ]] ; then
+			echo $tag: >> ~/tmp/dim-pull-request
+			git cat-file -p $obj | tail -n+6 >> ~/tmp/dim-pull-request
+		fi
+	done
+
+	cat >> ~/tmp/dim-pull-request <<-HERE
+
+	Cheers, Daniel
+
+
+	HERE
+}
+
 function prep_pull_mail
 {
 	cat > ~/tmp/dim-pull-request <<-HERE
@@ -290,12 +315,14 @@ case "$1" in
 			upstream=$2
 		fi
 		echo Using $upstream as the upstream
-		prep_pull_mail
+
+		# generate tag list
+		drm_intel_next_tags=`git log drm-intel-next ^$upstream --decorate | grep "(tag: drm-intel-next-" | sed -e "s/^.*(tag:.*\(drm-intel-next-[^ ,]*\).*)$/\1/"`
+		prep_pull_mail_tags $drm_intel_next_tags
 		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-next >> ~/tmp/dim-pull-request
 		mutt -s '[PULL] drm-intel-next' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
 		;;
 	pull-request-fixes)
-		today=`date +%Y-%m-%d`
 		upstream=origin/master
 		if [[ "x$2" != "x" ]] ; then
 			upstream=$2
@@ -308,7 +335,6 @@ case "$1" in
 		mutt -s '[PULL] drm-intel-fixes' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
 		;;
 	update-next)
-		today=`date +%Y-%m-%d`
 		cd ~/linux/src
 		git fetch danvet
 		if ! git branch --merged danvet/drm-intel-nightly | grep drm-intel-fixes &> /dev/null ; then
@@ -320,19 +346,36 @@ case "$1" in
 			exit 2
 		fi
 
-		gitk drm-intel-next-queued ^airlied/drm-next
+		gitk drm-intel-next-queued ^airlied/drm-next &
 
 		git push danvet drm-intel-next-queued:drm-intel-next
-		git tag -f drm-intel-next-$today danvet/drm-intel-next
-		git push -f danvet drm-intel-next-$today
+		tag=drm-intel-next-$today
+		git tag -f -a $tag danvet/drm-intel-next
+		git push -f danvet $tag
 
 		echo "Updating -testing to latest -nightly"
 		cd ~/linux/drm-intel-nightly
 		git push origin +HEAD:drm-intel-testing
 
-		# TODO autostart mutt with the mail to Yuangguang! Do this by
-		# putting the feature overview into the tag and then reusing it
-		# for both the mail to QA and the pull request itself.
+		cat > ~/tmp/test-request <<-HERE
+		Hi all,
+
+		New -testing cycle with cool stuff:
+		HERE
+		obj=`git rev-parse $tag`
+		if [[ `git cat-file -t $obj` == "tag" ]] ; then
+			git cat-file -p $obj | tail -n+6 >> ~/tmp/test-request
+		else
+			echo "<tag doesn't contain a changelog overview, fix this>" > ~/tmp/test-request
+		fi
+		cat > ~/tmp/test-request <<-HERE
+
+		Happy testing!
+
+		Cheers, Daniel
+		HERE
+
+		mutt -s "Updated drm-intel-testing" 'guang.a.yang' -c intel-gfx -i ~/tmp/test-request
 		;;
 	checker)
 		rm drivers/gpu/drm/i915/*.o &> /dev/null || true
