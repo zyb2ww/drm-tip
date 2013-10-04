@@ -358,8 +358,7 @@ case "$1" in
 		git push -f danvet $tag
 
 		echo "Updating -testing to latest -nightly"
-		cd ~/linux/drm-intel-nightly
-		git push origin +HEAD:drm-intel-testing
+		git push danvet +danvet/drm-intel-nightly:drm-intel-testing
 
 		cat > ~/tmp/test-request <<-HERE
 		Hi all,
@@ -370,9 +369,9 @@ case "$1" in
 		if [[ `git cat-file -t $obj` == "tag" ]] ; then
 			git cat-file -p $obj | tail -n+6 >> ~/tmp/test-request
 		else
-			echo "<tag doesn't contain a changelog overview, fix this>" > ~/tmp/test-request
+			echo "<tag doesn't contain a changelog overview, fix this>" >> ~/tmp/test-request
 		fi
-		cat > ~/tmp/test-request <<-HERE
+		cat >> ~/tmp/test-request <<-HERE
 
 		Happy testing!
 
