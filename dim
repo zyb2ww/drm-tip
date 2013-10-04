@@ -19,8 +19,8 @@ function update_linux_next
 			git push danvet +drm-intel-fixes:for-linux-next-fixes >& /dev/null
 		fi
 		if [[ $1 == fixes ]] ; then
-			echo Updating for-linux-next to -fixes
-			git push danvet +drm-intel-fixes:for-linux-next >& /dev/null
+			echo Updating for-linux-next-fixes
+			git push danvet +drm-intel-fixes:for-linux-next-fixes >& /dev/null
 		fi
 	else
 		echo linux-next: merge window
