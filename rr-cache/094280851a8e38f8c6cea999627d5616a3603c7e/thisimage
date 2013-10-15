@@ -309,6 +309,12 @@ struct intel_crtc_config {
 	bool double_wide;
 };
 
+struct intel_pipe_wm {
+	struct intel_wm_level wm[5];
+	uint32_t linetime;
+	bool fbc_wm_enabled;
+};
+
 struct intel_crtc {
 	struct drm_crtc base;
 	enum pipe pipe;
@@ -349,6 +355,12 @@ struct intel_crtc {
 	/* Access to these should be protected by dev_priv->irq_lock. */
 	bool cpu_fifo_underrun_disabled;
 	bool pch_fifo_underrun_disabled;
+
+	/* per-pipe watermark state */
+	struct {
+		/* watermarks currently being used  */
+		struct intel_pipe_wm active;
+	} wm;
 };
 
 struct intel_plane_wm_parameters {
@@ -827,6 +839,7 @@ void gen6_rps_idle(struct drm_i915_private *dev_priv);
 void gen6_rps_boost(struct drm_i915_private *dev_priv);
 void intel_aux_display_runtime_get(struct drm_i915_private *dev_priv);
 void intel_aux_display_runtime_put(struct drm_i915_private *dev_priv);
+void ilk_wm_get_hw_state(struct drm_device *dev);
 
 
 /* intel_sdvo.c */
