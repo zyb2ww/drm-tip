@@ -226,8 +226,15 @@ case "$1" in
 		git rebase -i danvet/drm-intel-next-queued
 		dim cof
 		git rebase -i danvet/drm-intel-fixes
+		git checkout drm-intel-next
+		git reset --hard danvet/drm-intel-next
 		# TODO: Restore -nightly merge state from the rerere-cache
 		# branch
+		test -d ~/linux/drm-intel-rerere/ || mkdir ~/linux/drm-intel-rerere/
+		cd ~/linux/drm-intel-rerere/
+		cp rr-cache/* ~/linux/drm-intel-nightly/.git/rr-cache/ -r
+		rm ~/linux/*fixup.patch &> /dev/null || true
+		cp *.patch ~/linux &> /dev/null || true
 		;;
 	push-queued|pq)
 		if git branch | grep drm-intel-next-queued | grep '\*' ; then
@@ -321,7 +328,7 @@ case "$1" in
 		echo Using $upstream as the upstream
 
 		# generate tag list
-		drm_intel_next_tags=`git log drm-intel-next ^$upstream --decorate | grep "(tag: drm-intel-next-" | sed -e "s/^.*(tag:.*\(drm-intel-next-[^ ,]*\).*)$/\1/"`
+		drm_intel_next_tags=`git log drm-intel-next ^$upstream --decorate | grep "(.*tag: drm-intel-next-" | sed -e "s/^.*(.*tag:.*\(drm-intel-next-[^ ,]*\).*)$/\1/"`
 		prep_pull_mail_tags $drm_intel_next_tags
 		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-next >> ~/tmp/dim-pull-request
 		mutt -s '[PULL] drm-intel-next' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
