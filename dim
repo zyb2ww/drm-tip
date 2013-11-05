@@ -6,7 +6,7 @@
 set -e
 
 today=`date +%Y-%m-%d`
-nightly_branches="origin/drm-intel-fixes drm-upstream/drm-next drm-upstream/drm-fixes"
+nightly_branches="origin/drm-intel-fixes drm-upstream/drm-next drm-upstream/drm-fixes origin/bdw-stage1"
 
 function update_linux_next
 {
