@@ -6,6 +6,7 @@
 set -e
 
 today=`date +%Y-%m-%d`
+nightly_branches="origin/drm-intel-fixes drm-upstream/drm-next drm-upstream/drm-fixes"
 
 function update_linux_next
 {
@@ -62,37 +63,18 @@ function update_nightly
 	git reset --hard origin/drm-intel-next-queued >& /dev/null
 
 	# merge -fixes
-	git merge --rerere-autoupdate --no-commit origin/drm-intel-fixes >& /dev/null || true
-	if [ -f ../nightly-fixup.patch ] ; then
-		echo applying manual fixup patch for drm-intel-fixes merge ...
-		git apply --index ../nightly-fixup.patch
-	fi
-	check_conflicts
-	git add -u
+	for branch in $nightly_branches; do
+		name=${branch##*/}
+		git merge --rerere-autoupdate --no-commit $branch >& /dev/null || true
+		if [ -f ../nightly-$name-fixup.patch ] ; then
+			echo applying manual fixup patch for drm-intel-fixes merge ...
+			git apply --index ../nightly-$name-fixup.patch
+		fi
+		check_conflicts
+		git add -u
 
-	git commit --no-edit || true
-
-	# merge drm-next
-	git merge --rerere-autoupdate --no-commit drm-upstream/drm-next >& /dev/null || true
-	if [ -f ../nightly-drm-next-fixup.patch ] ; then
-		echo applying manual fixup patch for drm-next merge ...
-		git apply --index ../nightly-drm-next-fixup.patch
-	fi
-	check_conflicts
-	git add -u
-
-	git commit --no-edit || true
-
-	# merge drm-next
-	git merge --rerere-autoupdate --no-commit drm-upstream/drm-fixes >& /dev/null || true
-	if [ -f ../nightly-drm-fixes-fixup.patch ] ; then
-		echo applying manual fixup patch for drm-fixes merge ...
-		git apply --index ../nightly-drm-fixes-fixup.patch
-	fi
-	check_conflicts
-	git add -u
-
-	git commit --no-edit || true
+		git commit --no-edit || true
+	done
 
 	git push origin +HEAD >& /dev/null && echo "nightly branch successfully updated"
 
@@ -102,7 +84,7 @@ function update_nightly
 		git rm *.patch >& /dev/null || true
 		cp ~/linux/drm-intel-nightly/.git/rr-cache/* rr-cache -r
 		cp ~/bin/dim dim
-		cp ../*fixup.patch . >& /dev/null || true
+		cp ../nightly*fixup.patch . >& /dev/null || true
 		git add *.patch >& /dev/null || true
 		git add dim > /dev/null
 		git add rr-cache/* > /dev/null
@@ -264,8 +246,10 @@ case "$1" in
 	cof)
 		git checkout drm-intel-fixes
 		;;
-	apply-queued|aq)
-		if git branch | grep drm-intel-next-queued | grep '\*' ; then
+	apply-branch)
+		shift
+		branch=$1
+		if git branch | grep $branch | grep '\*' ; then
 			shift
 			git am -3 $@
 			dim_checkpatch HEAD
@@ -274,15 +258,11 @@ case "$1" in
 			echo "You're on the wrong branch."
 		fi
 		;;
+	apply-queued|aq)
+		dim apply-branch drm-intel-next-queued $@
+		;;
 	apply-fixes|af)
-		if git branch | grep drm-intel-fixes | grep '\*' ; then
-			shift
-			git am -3 $@
-			dim_checkpatch HEAD
-			git ca &
-		else
-			echo "You're on the wrong branch."
-		fi
+		dim apply-branch drm-intel-fixes $@
 		;;
 	apply-resolved|ar)
 		make -j 20 && git add -u && git am --resolved
@@ -450,6 +430,11 @@ case "$1" in
 
 		Checks out the drm-intel-fixes branch or dinq respectively for
 		merging patches.
+
+		apply-branch branch [git am arguments]
+
+		Applys a patch to the given branch, complaining if it is not
+		checked out yet.
 
 		apply-queued|aq [git am arguments]
 		apply-fixes|af [git am arguments]
