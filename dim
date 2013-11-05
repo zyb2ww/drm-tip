@@ -263,9 +263,11 @@ case "$1" in
 		fi
 		;;
 	apply-queued|aq)
+		shift
 		dim apply-branch drm-intel-next-queued $@
 		;;
 	apply-fixes|af)
+		shift
 		dim apply-branch drm-intel-fixes $@
 		;;
 	apply-resolved|ar)
