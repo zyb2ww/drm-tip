@@ -6,7 +6,8 @@
 set -e
 
 today=`date +%Y-%m-%d`
-nightly_branches="origin/drm-intel-fixes drm-upstream/drm-next drm-upstream/drm-fixes origin/bdw-stage1"
+nightly_branches="origin/drm-intel-fixes drm-upstream/drm-next drm-upstream/drm-fixes"
+nightly_branches="$nightly_branches origin/bdw-stage1"
 
 function update_linux_next
 {
@@ -218,6 +219,9 @@ case "$1" in
 		rm ~/linux/*fixup.patch &> /dev/null || true
 		cp *.patch ~/linux &> /dev/null || true
 		;;
+	rebuild-nightly)
+		update_nightly
+		;;
 	push-queued|pq)
 		if git branch | grep drm-intel-next-queued | grep '\*' ; then
 			shift
@@ -417,6 +421,11 @@ case "$1" in
 		update-branches
 
 		Updates all maintainer branches.
+
+		rebuild-nightly
+
+		Rebuilds the nightly branch. Useful when ad-hoc trees are
+		included in -nightly.
 
 		push-queued|pq
 		push-fixes|pf
