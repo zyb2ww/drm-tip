@@ -1,12 +1,37 @@
 #!/bin/bash
 
+# Copyright © 2012,2013 Intel Corporation
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice (including the next
+# paragraph) shall be included in all copies or substantial portions of the
+# Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.
+#
+# Authors:
+#    Daniel Vetter <daniel.vetter@ffwll.ch>
+
 # drm-intel-next maintainer script
 
 # fail on any goof-up
 set -e
 
 today=`date +%Y-%m-%d`
-nightly_branches="origin/drm-intel-fixes drm-upstream/drm-next drm-upstream/drm-fixes"
+nightly_branches="origin/drm-intel-next-queued origin/drm-intel-fixes"
+nightly_branches="$nightly_branches drm-upstream/drm-next drm-upstream/drm-fixes"
 nightly_branches="$nightly_branches origin/backlight-rework origin/bdw-fixes"
 
 function update_linux_next
@@ -56,41 +81,58 @@ function check_conflicts
 
 function update_nightly
 {
-	cd ~/linux/drm-intel-nightly
+	local integration_branch=drm-intel-nightly
+	local specfile=`mktemp`
+	local time=`date +%Yy-%mm-%dd-%Hh-%Mm-%Ss`
+	local first=1
+
+	cd ~/linux/$integration_branch
 	# git fetch returns 128 if there's nothing to be fetched
 	git fetch origin >& /dev/null || true
 	# don't auto-fetch drm-upstream to avoid including -rc1 too early
 	#git fetch drm-upstream >& /dev/null || true
-	git reset --hard origin/drm-intel-next-queued >& /dev/null
 
 	# merge -fixes
 	for branch in $nightly_branches; do
 		name=${branch##*/}
-		git merge --rerere-autoupdate --no-commit $branch >& /dev/null || true
-		if [ -f ../nightly-$name-fixup.patch ] ; then
-			echo applying manual fixup patch for drm-intel-fixes merge ...
-			git apply --index ../nightly-$name-fixup.patch
-		fi
-		check_conflicts
-		git add -u
 
-		git commit --no-edit || true
+		if [ $first == 1 ] ; then
+			git reset --hard $branch >& /dev/null
+			first=0
+		else
+			git merge --rerere-autoupdate --no-commit $branch >& /dev/null || true
+			if [ -f ../$integration_branch-$name-fixup.patch ] ; then
+				echo applying manual fixup patch for $integration_branch merge ...
+				git apply --index ../$integration_branch-$name-fixup.patch
+			fi
+			check_conflicts
+			git add -u
+
+			git commit --no-edit || true
+		fi
+
+		echo $branch `git rev-parse $branch` >> $specfile
 	done
 
-	git push origin +HEAD >& /dev/null && echo "nightly branch successfully updated"
+	mv $specfile integration-manifest
+	git add integration-manifest
+	git commit -m "$integration_branch: $time integration manifest"
+
+	git push origin +HEAD >& /dev/null && echo "$integration_branch branch successfully updated"
 
 	cd ~/linux/drm-intel-rerere/
 	if git branch | grep rerere-cache | grep '\*' >& /dev/null ; then
 		git pull >& /dev/null
 		git rm *.patch >& /dev/null || true
-		cp ~/linux/drm-intel-nightly/.git/rr-cache/* rr-cache -r
+		cp ~/linux/$integration_branch/.git/rr-cache/* rr-cache -r
 		cp ~/bin/dim dim
-		cp ../nightly*fixup.patch . >& /dev/null || true
+		cp ~/bin/qf qf
+		cp ../$integration_branch*fixup.patch . >& /dev/null || true
 		git add *.patch >& /dev/null || true
 		git add dim > /dev/null
+		git add qf > /dev/null
 		git add rr-cache/* > /dev/null
-		time=`date +%Yy-%mm-%dd-%Hh-%Mm-%Ss`
-		if git c -m "$time: -nightly rerere cache update" >& /dev/null; then
+		if git commit -m "$time: $integration_branch rerere cache update" >& /dev/null; then
 			git push origin HEAD >& /dev/null && echo "rerere cache successfully updated"
 		else
 			echo "nothing changed in the rerere cache"
