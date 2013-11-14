@@ -32,9 +32,7 @@ set -e
 today=`date +%Y-%m-%d`
 nightly_branches="origin/drm-intel-next-queued origin/drm-intel-fixes"
 nightly_branches="$nightly_branches drm-upstream/drm-next drm-upstream/drm-fixes"
-#nightly_branches="$nightly_branches origin/backlight-rework origin/bdw-fixes"
-#backlight out for now until shit has settled
-nightly_branches="$nightly_branches origin/bdw-fixes"
+nightly_branches="$nightly_branches origin/backlight-rework origin/bdw-fixes"
 
 function update_linux_next
 {
