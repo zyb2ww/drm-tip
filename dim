@@ -32,7 +32,9 @@ set -e
 today=`date +%Y-%m-%d`
 nightly_branches="origin/drm-intel-next-queued origin/drm-intel-fixes"
 nightly_branches="$nightly_branches drm-upstream/drm-next drm-upstream/drm-fixes"
-nightly_branches="$nightly_branches origin/backlight-rework origin/bdw-fixes"
+#nightly_branches="$nightly_branches origin/backlight-rework origin/bdw-fixes"
+#backlight out for now until shit has settled
+nightly_branches="$nightly_branches origin/bdw-fixes"
 
 function update_linux_next
 {
@@ -94,7 +96,7 @@ function update_nightly
 
 	# merge -fixes
 	for branch in $nightly_branches; do
-		name=${branch##*/}
+		local name=${branch##*/}
 
 		if [ $first == 1 ] ; then
 			git reset --hard $branch >& /dev/null
@@ -165,6 +167,12 @@ function prep_testing # $1 kernel branch to test
 	check_repo_clean ~/xorg/intel-gpu-tools/ i-g-t
 	check_repo_clean ~/xorg/piglit/ piglit
 	check_repo_clean ~/linux/src Kernel
+	check_repo_clean ~/xorg/drm libdrm
+
+	cd ~/xorg/drm
+	git checkout master
+	git pull --rebase
+	./autogen.sh && make -j 4
 
 	cd ~/xorg/piglit
 	git checkout master
@@ -196,7 +204,7 @@ function prep_pull_mail_tags
 	HERE
 
 	for tag in $@ ; do
-		obj=`git rev-parse $tag`
+		local obj=`git rev-parse $tag`
 		if [[ `git cat-file -t $obj` == "tag" ]] ; then
 			echo $tag: >> ~/tmp/dim-pull-request
 			git cat-file -p $obj | tail -n+6 >> ~/tmp/dim-pull-request
