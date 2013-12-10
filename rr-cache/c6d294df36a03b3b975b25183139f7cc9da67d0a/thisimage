@@ -6514,7 +6514,7 @@ static void assert_can_disable_lcpll(struct drm_i915_private *dev_priv)
 
 	spin_lock_irqsave(&dev_priv->irq_lock, irqflags);
 	val = I915_READ(DEIMR);
-	WARN((val & ~DE_PCH_EVENT_IVB) != val,
+	WARN((val | DE_PCH_EVENT_IVB) != 0xffffffff,
 	     "Unexpected DEIMR bits enabled: 0x%x\n", val);
 	val = I915_READ(SDEIMR);
 	WARN((val | SDE_HOTPLUG_MASK_CPT) != 0xffffffff,
@@ -6646,6 +6646,8 @@ void hsw_enable_pc8_work(struct work_struct *__work)
 	struct drm_device *dev = dev_priv->dev;
 	uint32_t val;
 
+	WARN_ON(!HAS_PC8(dev));
+
 	if (dev_priv->pc8.enabled)
 		return;
 
@@ -6662,6 +6664,8 @@ void hsw_enable_pc8_work(struct work_struct *__work)
 	lpt_disable_clkout_dp(dev);
 	hsw_pc8_disable_interrupts(dev);
 	hsw_disable_lcpll(dev_priv, true, true);
+
+	intel_runtime_pm_put(dev_priv);
 }
 
 static void __hsw_enable_package_c8(struct drm_i915_private *dev_priv)
@@ -6691,11 +6695,15 @@ static void __hsw_disable_package_c8(struct drm_i915_private *dev_priv)
 	if (dev_priv->pc8.disable_count != 1)
 		return;
 
+	WARN_ON(!HAS_PC8(dev));
+
 	cancel_delayed_work_sync(&dev_priv->pc8.enable_work);
 	if (!dev_priv->pc8.enabled)
 		return;
 
 	DRM_DEBUG_KMS("Disabling package C8+\n");
+
+	intel_runtime_pm_get(dev_priv);
 
 	hsw_restore_lcpll(dev_priv);
 	hsw_pc8_restore_interrupts(dev);
