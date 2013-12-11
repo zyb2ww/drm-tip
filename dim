@@ -29,6 +29,8 @@
 # TODO
 # - Add functions to setup/update all the branches/trees
 # - Improve docs/workflow for topic branches
+# - extract the integration tree logic and make it generally useful, maybe for a
+# drm-integration tree ...
 
 # fail on any goof-up
 set -e
