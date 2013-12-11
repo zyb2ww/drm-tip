@@ -26,6 +26,10 @@
 
 # drm-intel-next maintainer script
 
+# TODO
+# - Add functions to setup/update all the branches/trees
+# - Improve docs/workflow for topic branches
+
 # fail on any goof-up
 set -e
 
