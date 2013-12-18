@@ -1,0 +1,13 @@
+diff --git a/drivers/gpu/drm/i915/i915_gem_execbuffer.c b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+index 78a42c4abf7e..bbff8f9b6549 100644
+--- a/drivers/gpu/drm/i915/i915_gem_execbuffer.c
++++ b/drivers/gpu/drm/i915/i915_gem_execbuffer.c
+@@ -131,7 +131,7 @@ eb_lookup_vmas(struct eb_vmas *eb,
+ 		if (exec[i].flags & EXEC_OBJECT_NEEDS_GTT &&
+ 		    USES_FULL_PPGTT(vm->dev)) {
+ 			ret = -EINVAL;
+-			goto out;
++			goto err;
+ 		}
+ 
+ 		/* If we have secure dispatch, or the userspace assures us that
