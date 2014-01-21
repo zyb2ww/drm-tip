@@ -390,6 +390,21 @@ case "$1" in
 		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/drm-intel-fixes >> ~/tmp/dim-pull-request
 		mutt -s '[PULL] drm-intel-fixes' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
 		;;
+	pull-request-topic)
+		if [[ "x$3" != "x" ]] ; then
+			branch=$2
+		else
+			no branch given
+		fi
+		if [[ "x$2" != "x" ]] ; then
+			upstream=$3
+		else
+			no upstream given
+		fi
+		prep_pull_mail
+		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/$branch >> ~/tmp/dim-pull-request
+		mutt -s '[PULL] drm-intel-fixes' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
+		;;
 	update-next)
 		cd ~/linux/src
 		git fetch danvet
