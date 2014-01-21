@@ -572,6 +572,11 @@ case "$1" in
 
 		Then fires up mutt with the pre-generated email with subject and
 		recipients already set.
+		
+		pull-request-topic branch upstream
+
+		Generates a pull request for the given topic-branch/upstream
+		combo and fires up mutt with the pre-generated email.
 
 		update-next
 
