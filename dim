@@ -403,7 +403,7 @@ case "$1" in
 		fi
 		prep_pull_mail
 		git request-pull $upstream git://people.freedesktop.org/~danvet/drm-intel danvet/$branch >> ~/tmp/dim-pull-request
-		mutt -s '[PULL] drm-intel-fixes' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
+		mutt -s '[PULL] topic' 'airlied' -c intel-gfx -c dri-devel -i ~/tmp/dim-pull-request
 		;;
 	update-next)
 		cd ~/linux/src
