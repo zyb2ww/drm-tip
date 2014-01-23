@@ -240,6 +240,12 @@ function prep_pull_mail
 cd ~/linux/src
 
 case "$1" in
+	upload-docs)
+		# cd back
+		cd -
+		make htmldocs
+		scp -r Documentation/DocBook/drm annarchy.freedesktop.org:~/public_html
+		;;
 	prep-branch|pb)
 		if [ "x$2" == "x" ] ; then
 			prep_testing HEAD
@@ -587,6 +593,12 @@ case "$1" in
 
 		Also checks that the drm-intel-fixes|-next-queued are fully
 		merged into -nightly to avoid operator error.
+
+		upload-docs
+
+		Generate html kernel docs and upload the drm DocBook to the
+		private fdo space. Note that this always uses the kernel sources
+		in the current directory.
 
 		checker
 
