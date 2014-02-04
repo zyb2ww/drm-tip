@@ -30,6 +30,7 @@
 # - Add functions to setup/update all the branches/trees
 # - Improve docs/workflow for topic branches
 # - extract the integration tree logic and make it generally useful, maybe for a
+# - add support to spec some of the config variables in a dotfile
 # drm-integration tree ...
 
 # fail on any goof-up
