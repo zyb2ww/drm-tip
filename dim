@@ -246,9 +246,18 @@ function setup_dim
 
 	drm_upstream_git=git://people.freedesktop.org/~airlied/linux
 
+	if [ ! -d maintainer-tools ]; then
+		git clone $drm_intel_git maintainer-tools
+	fi
+	cd maintainer-tools
+	git config remote.origin.url $drm_intel_git
+	if ! git branch | grep maintainer-tools > /dev/null ; then
+		git checkout -t origin/maintainer-tools
+	fi
+	cd ..
+
 	if [ ! -d drm-intel-rerere ]; then
-		git clone $drm_intel_git
-		mv drm-intel drm-intel-rerere
+		git clone $drm_intel_git drm-intel-rerere
 	fi
 	cd drm-intel-rerere
 	git config remote.origin.url $drm_intel_git
@@ -257,9 +266,8 @@ function setup_dim
 	fi
 	cd ..
 
-	if [ ! ed drm-intel-nightly ]; then
-		git clone $drm_intel_git
-		mv drm-intel drm-intel-nightly
+	if [ ! -d drm-intel-nightly ]; then
+		git clone $drm_intel_git drm-intel-nightly
 	fi
 	cd drm-intel-nightly
 	git config remote.origin.url $drm_intel_git
