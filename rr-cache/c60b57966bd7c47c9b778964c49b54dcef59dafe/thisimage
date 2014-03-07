@@ -4,7 +4,7 @@
 
 ccflags-y := -Iinclude/drm
 
-# Please keep these built lists sorted!
+# Please keep these build lists sorted!
 
 # core driver code
 i915-y := i915_drv.o \
