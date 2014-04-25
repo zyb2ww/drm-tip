@@ -7088,7 +7088,6 @@ void hsw_enable_pc8(struct drm_i915_private *dev_priv)
 	}
 
 	lpt_disable_clkout_dp(dev);
-	intel_runtime_pm_disable_interrupts(dev);
 	hsw_disable_lcpll(dev_priv, true, true);
 }
 
@@ -7100,7 +7099,6 @@ void hsw_disable_pc8(struct drm_i915_private *dev_priv)
 	DRM_DEBUG_KMS("Disabling package C8+\n");
 
 	hsw_restore_lcpll(dev_priv);
-	intel_runtime_pm_restore_interrupts(dev);
 	lpt_init_pch_refclk(dev);
 
 	if (dev_priv->pch_id == INTEL_PCH_LPT_LP_DEVICE_ID_TYPE) {
@@ -7110,10 +7108,6 @@ void hsw_disable_pc8(struct drm_i915_private *dev_priv)
 	}
 
 	intel_prepare_ddi(dev);
-	i915_gem_init_swizzling(dev);
-	mutex_lock(&dev_priv->rps.hw_lock);
-	gen6_update_ring_freq(dev);
-	mutex_unlock(&dev_priv->rps.hw_lock);
 }
 
 static void snb_modeset_global_resources(struct drm_device *dev)
