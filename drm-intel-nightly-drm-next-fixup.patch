@@ -1,0 +1,100 @@
+diff --git a/drivers/gpu/drm/exynos/exynos_drm_drv.c b/drivers/gpu/drm/exynos/exynos_drm_drv.c
+index 201feb25048d..25ba3628960a 100644
+--- a/drivers/gpu/drm/exynos/exynos_drm_drv.c
++++ b/drivers/gpu/drm/exynos/exynos_drm_drv.c
+@@ -568,27 +568,9 @@ static struct platform_driver *const exynos_drm_kms_drivers[] = {
+ #endif
+ };
+ 
+-<<<<<<< HEAD
+-	match = exynos_drm_match_add(&pdev->dev);
+-	if (IS_ERR(match)) {
+-		ret = PTR_ERR(match);
+-		goto err_unregister_hdmi_drv;
+-	}
+-
+-	ret = component_master_add_with_match(&pdev->dev, &exynos_drm_ops,
+-						match);
+-	if (ret < 0)
+-		goto err_unregister_hdmi_drv;
+-
+-#ifdef CONFIG_DRM_EXYNOS_G2D
+-	ret = platform_driver_register(&g2d_driver);
+-	if (ret < 0)
+-		goto err_del_component_master;
+-=======
+ static struct platform_driver *const exynos_drm_non_kms_drivers[] = {
+ #ifdef CONFIG_DRM_EXYNOS_G2D
+ 	&g2d_driver,
+->>>>>>> drm-upstream/drm-next
+ #endif
+ #ifdef CONFIG_DRM_EXYNOS_FIMC
+ 	&fimc_driver,
+@@ -611,59 +593,6 @@ static int exynos_drm_platform_probe(struct platform_device *pdev)
+ 	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
+ 	exynos_drm_driver.num_ioctls = ARRAY_SIZE(exynos_ioctls);
+ 
+-<<<<<<< HEAD
+-	return ret;
+-
+-#ifdef CONFIG_DRM_EXYNOS_IPP
+-err_unregister_ipp_drv:
+-	platform_driver_unregister(&ipp_driver);
+-err_unregister_gsc_drv:
+-#endif
+-
+-#ifdef CONFIG_DRM_EXYNOS_GSC
+-	platform_driver_unregister(&gsc_driver);
+-err_unregister_rotator_drv:
+-#endif
+-
+-#ifdef CONFIG_DRM_EXYNOS_ROTATOR
+-	platform_driver_unregister(&rotator_driver);
+-err_unregister_fimc_drv:
+-#endif
+-
+-#ifdef CONFIG_DRM_EXYNOS_FIMC
+-	platform_driver_unregister(&fimc_driver);
+-err_unregister_g2d_drv:
+-#endif
+-
+-#ifdef CONFIG_DRM_EXYNOS_G2D
+-	platform_driver_unregister(&g2d_driver);
+-err_del_component_master:
+-#endif
+-	component_master_del(&pdev->dev, &exynos_drm_ops);
+-
+-err_unregister_hdmi_drv:
+-#ifdef CONFIG_DRM_EXYNOS_HDMI
+-	platform_driver_unregister(&hdmi_driver);
+-err_unregister_mixer_drv:
+-	platform_driver_unregister(&mixer_driver);
+-err_unregister_dsi_drv:
+-#endif
+-
+-#ifdef CONFIG_DRM_EXYNOS_DSI
+-	platform_driver_unregister(&dsi_driver);
+-err_unregister_dp_drv:
+-#endif
+-
+-#ifdef CONFIG_DRM_EXYNOS_DP
+-	platform_driver_unregister(&dp_driver);
+-err_unregister_fimd_drv:
+-#endif
+-
+-#ifdef CONFIG_DRM_EXYNOS_FIMD
+-	platform_driver_unregister(&fimd_driver);
+-#endif
+-	return ret;
+-=======
+ 	match = exynos_drm_match_add(&pdev->dev);
+ 	if (IS_ERR(match)) {
+ 		return PTR_ERR(match);
+@@ -671,7 +600,6 @@ err_unregister_fimd_drv:
+ 
+ 	return component_master_add_with_match(&pdev->dev, &exynos_drm_ops,
+ 					       match);
+->>>>>>> drm-upstream/drm-next
+ }
+ 
+ static int exynos_drm_platform_remove(struct platform_device *pdev)
