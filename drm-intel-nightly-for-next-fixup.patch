@@ -1,0 +1,19 @@
+diff --git a/drivers/gpu/drm/drm_edid.c b/drivers/gpu/drm/drm_edid.c
+index 1c76514196e4..53bc7a628909 100644
+--- a/drivers/gpu/drm/drm_edid.c
++++ b/drivers/gpu/drm/drm_edid.c
+@@ -1200,14 +1200,6 @@ drm_do_probe_ddc_edid(void *data, u8 *buf, unsigned int block, size_t len)
+ 	return ret == xfers ? 0 : -1;
+ }
+ 
+-static bool drm_edid_is_zero(u8 *in_edid, int length)
+-{
+-	if (memchr_inv(in_edid, 0, length))
+-		return false;
+-
+-	return true;
+-}
+-
+ /**
+  * drm_do_get_edid - get EDID data using a custom EDID block read function
+  * @connector: connector we're probing
