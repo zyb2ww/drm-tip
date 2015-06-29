@@ -4766,8 +4766,8 @@ static void intel_pre_plane_update(struct intel_crtc *crtc)
 		mutex_unlock(&dev->struct_mutex);
 	}
 
-	if (intel_crtc->atomic.disable_ips)
-		hsw_disable_ips(intel_crtc);
+	if (crtc->atomic.disable_ips)
+		hsw_disable_ips(crtc);
 
 	if (atomic->pre_disable_primary)
 		intel_pre_disable_primary(&crtc->base);
