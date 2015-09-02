@@ -236,6 +236,12 @@ int intel_sanitize_enable_execlists(struct drm_device *dev, int enable_execlists
 {
 	WARN_ON(i915.enable_ppgtt == -1);
 
+	/* On platforms with execlist available, vGPU will only
+	 * support execlist mode, no ring buffer mode.
+	 */
+	if (HAS_LOGICAL_RING_CONTEXTS(dev) && intel_vgpu_active(dev))
+		return 1;
+
 	if (INTEL_INFO(dev)->gen >= 9)
 		return 1;
 
@@ -1544,7 +1550,8 @@ static int gen8_emit_bb_start(struct drm_i915_gem_request *req,
 	 * not needed in 48-bit.*/
 	if (req->ctx->ppgtt &&
 	    (intel_ring_flag(req->ring) & req->ctx->ppgtt->pd_dirty_rings)) {
-		if (!USES_FULL_48BIT_PPGTT(req->i915)) {
+		if (!USES_FULL_48BIT_PPGTT(req->i915) &&
+		    !intel_vgpu_active(req->i915->dev)) {
 			ret = intel_logical_ring_emit_pdps(req);
 			if (ret)
 				return ret;
