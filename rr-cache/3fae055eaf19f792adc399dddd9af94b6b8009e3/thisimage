@@ -2190,7 +2190,7 @@ static bool need_vtd_wa(struct drm_device *dev)
 
 unsigned int
 intel_tile_height(struct drm_device *dev, uint32_t pixel_format,
-		  uint64_t fb_format_modifier)
+		  uint64_t fb_format_modifier, unsigned int plane)
 {
 	unsigned int tile_height;
 	uint32_t pixel_bytes;
@@ -2206,7 +2206,7 @@ intel_tile_height(struct drm_device *dev, uint32_t pixel_format,
 		tile_height = 32;
 		break;
 	case I915_FORMAT_MOD_Yf_TILED:
-		pixel_bytes = drm_format_plane_cpp(pixel_format, 0);
+		pixel_bytes = drm_format_plane_cpp(pixel_format, plane);
 		switch (pixel_bytes) {
 		default:
 		case 1:
@@ -2240,7 +2240,7 @@ intel_fb_align_height(struct drm_device *dev, unsigned int height,
 		      uint32_t pixel_format, uint64_t fb_format_modifier)
 {
 	return ALIGN(height, intel_tile_height(dev, pixel_format,
-					       fb_format_modifier));
+					       fb_format_modifier, 0));
 }
 
 static int
@@ -2263,14 +2263,26 @@ intel_fill_fb_ggtt_view(struct i915_ggtt_view *view, struct drm_framebuffer *fb,
 	info->height = fb->height;
 	info->pixel_format = fb->pixel_format;
 	info->pitch = fb->pitches[0];
+	info->uv_offset = fb->offsets[1];
 	info->fb_modifier = fb->modifier[0];
 
 	tile_height = intel_tile_height(fb->dev, fb->pixel_format,
-					fb->modifier[0]);
+					fb->modifier[0], 0);
 	tile_pitch = PAGE_SIZE / tile_height;
 	info->width_pages = DIV_ROUND_UP(fb->pitches[0], tile_pitch);
 	info->height_pages = DIV_ROUND_UP(fb->height, tile_height);
 	info->size = info->width_pages * info->height_pages * PAGE_SIZE;
+
+	if (info->pixel_format == DRM_FORMAT_NV12) {
+		tile_height = intel_tile_height(fb->dev, fb->pixel_format,
+						fb->modifier[0], 1);
+		tile_pitch = PAGE_SIZE / tile_height;
+		info->width_pages_uv = DIV_ROUND_UP(fb->pitches[0], tile_pitch);
+		info->height_pages_uv = DIV_ROUND_UP(fb->height / 2,
+						     tile_height);
+		info->size_uv = info->width_pages_uv * info->height_pages_uv *
+				PAGE_SIZE;
+	}
 
 	return 0;
 }
@@ -2885,14 +2897,29 @@ u32 intel_fb_stride_alignment(struct drm_device *dev, uint64_t fb_modifier,
 }
 
 unsigned long intel_plane_obj_offset(struct intel_plane *intel_plane,
-				     struct drm_i915_gem_object *obj)
+				     struct drm_i915_gem_object *obj,
+				     unsigned int plane)
 {
 	const struct i915_ggtt_view *view = &i915_ggtt_view_normal;
+	struct i915_vma *vma;
+	unsigned char *offset;
 
 	if (intel_rotation_90_or_270(intel_plane->base.state->rotation))
 		view = &i915_ggtt_view_rotated;
 
-	return i915_gem_obj_ggtt_offset_view(obj, view);
+	vma = i915_gem_obj_to_ggtt_view(obj, view);
+	if (WARN(!vma, "ggtt vma for display object not found! (view=%u)\n",
+		view->type))
+		return -1;
+
+	offset = (unsigned char *)vma->node.start;
+
+	if (plane == 1) {
+		offset += vma->ggtt_view.rotation_info.uv_start_page *
+			  PAGE_SIZE;
+	}
+
+	return (unsigned long)offset;
 }
 
 static void skl_detach_scaler(struct intel_crtc *intel_crtc, int id)
@@ -3048,7 +3075,7 @@ static void skylake_update_primary_plane(struct drm_crtc *crtc,
 	obj = intel_fb_obj(fb);
 	stride_div = intel_fb_stride_alignment(dev, fb->modifier[0],
 					       fb->pixel_format);
-	surf_addr = intel_plane_obj_offset(to_intel_plane(plane), obj);
+	surf_addr = intel_plane_obj_offset(to_intel_plane(plane), obj, 0);
 
 	/*
 	 * FIXME: intel_plane_state->src, dst aren't set when transitional
@@ -3075,7 +3102,7 @@ static void skylake_update_primary_plane(struct drm_crtc *crtc,
 	if (intel_rotation_90_or_270(rotation)) {
 		/* stride = Surface height in tiles */
 		tile_height = intel_tile_height(dev, fb->pixel_format,
-						fb->modifier[0]);
+						fb->modifier[0], 0);
 		stride = DIV_ROUND_UP(fb->height, tile_height);
 		x_offset = stride * tile_height - y - src_h;
 		y_offset = x;
@@ -11411,8 +11438,9 @@ static int intel_crtc_page_flip(struct drm_crtc *crtc,
 	if (ret)
 		goto cleanup_pending;
 
-	work->gtt_offset = intel_plane_obj_offset(to_intel_plane(primary), obj)
-						  + intel_crtc->dspaddr_offset;
+	work->gtt_offset = intel_plane_obj_offset(to_intel_plane(primary),
+						  obj, 0);
+	work->gtt_offset += intel_crtc->dspaddr_offset;
 
 	if (mmio_flip) {
 		ret = intel_queue_mmio_flip(dev, crtc, fb, obj, ring,
