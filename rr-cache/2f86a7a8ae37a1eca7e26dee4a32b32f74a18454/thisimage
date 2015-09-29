@@ -145,7 +145,7 @@ static uint32_t audio_config_setup_n_reg(int n, uint32_t val)
 
 /* check whether N/CTS/M need be set manually */
 static bool audio_rate_need_prog(struct intel_crtc *crtc,
-				 const struct drm_display_mode *mode)
+					struct drm_display_mode *mode)
 {
 	if (((mode->clock == TMDS_297M) ||
 		 (mode->clock == TMDS_296M)) &&
@@ -326,10 +326,13 @@ static void hsw_audio_codec_enable(struct drm_connector *connector,
 	if (intel_pipe_has_type(intel_crtc, INTEL_OUTPUT_DISPLAYPORT))
 		tmp |= AUD_CONFIG_N_VALUE_INDEX;
 	else
+<<<<<<<
 		tmp |= audio_config_hdmi_pixel_clock(adjusted_mode);
+=======
+		tmp |= audio_config_hdmi_pixel_clock(mode);
 
 	tmp &= ~AUD_CONFIG_N_PROG_ENABLE;
-	if (audio_rate_need_prog(intel_crtc, adjusted_mode)) {
+	if (audio_rate_need_prog(intel_crtc, mode)) {
 		if (!acomp)
 			rate = 0;
 		else if (port >= PORT_A && port <= PORT_E)
@@ -338,13 +341,14 @@ static void hsw_audio_codec_enable(struct drm_connector *connector,
 			DRM_ERROR("invalid port: %d\n", port);
 			rate = 0;
 		}
-		n = audio_config_get_n(adjusted_mode, rate);
+		n = audio_config_get_n(mode, rate);
 		if (n != 0)
 			tmp = audio_config_setup_n_reg(n, tmp);
 		else
 			DRM_DEBUG_KMS("no suitable N value is found\n");
 	}
 
+>>>>>>>
 	I915_WRITE(HSW_AUD_CFG(pipe), tmp);
 
 	mutex_unlock(&dev_priv->av_mutex);
@@ -499,11 +503,7 @@ void intel_audio_codec_enable(struct intel_encoder *intel_encoder)
 	struct intel_digital_port *intel_dig_port = enc_to_dig_port(encoder);
 	enum port port = intel_dig_port->port;
 
-<<<<<<<
-	connector = drm_select_eld(encoder);
-=======
 	connector = drm_select_eld(encoder, adjusted_mode);
->>>>>>>
 	if (!connector)
 		return;
 
