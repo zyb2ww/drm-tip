@@ -3139,6 +3139,7 @@ static int dce_v10_0_resume(void *handle)
 	dce_v10_0_pageflip_interrupt_init(adev);
 
 	return ret;
+}
 
 static bool dce_v10_0_is_idle(void *handle)
 {
