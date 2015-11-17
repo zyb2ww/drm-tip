@@ -5156,18 +5156,38 @@ static enum intel_display_power_domain port_to_power_domain(enum port port)
 {
 	switch (port) {
 	case PORT_A:
-		return POWER_DOMAIN_PORT_DDI_A_4_LANES;
+		return POWER_DOMAIN_PORT_DDI_A_LANES;
 	case PORT_B:
-		return POWER_DOMAIN_PORT_DDI_B_4_LANES;
+		return POWER_DOMAIN_PORT_DDI_B_LANES;
 	case PORT_C:
-		return POWER_DOMAIN_PORT_DDI_C_4_LANES;
+		return POWER_DOMAIN_PORT_DDI_C_LANES;
 	case PORT_D:
-		return POWER_DOMAIN_PORT_DDI_D_4_LANES;
+		return POWER_DOMAIN_PORT_DDI_D_LANES;
 	case PORT_E:
-		return POWER_DOMAIN_PORT_DDI_E_2_LANES;
+		return POWER_DOMAIN_PORT_DDI_E_LANES;
 	default:
 		WARN_ON_ONCE(1);
 		return POWER_DOMAIN_PORT_OTHER;
+	}
+}
+
+static enum intel_display_power_domain port_to_aux_power_domain(enum port port)
+{
+	switch (port) {
+	case PORT_A:
+		return POWER_DOMAIN_AUX_A;
+	case PORT_B:
+		return POWER_DOMAIN_AUX_B;
+	case PORT_C:
+		return POWER_DOMAIN_AUX_C;
+	case PORT_D:
+		return POWER_DOMAIN_AUX_D;
+	case PORT_E:
+		/* FIXME: Check VBT for actual wiring of PORT E */
+		return POWER_DOMAIN_AUX_D;
+	default:
+		WARN_ON_ONCE(1);
+		return POWER_DOMAIN_AUX_A;
 	}
 }
 
@@ -5199,6 +5219,29 @@ intel_display_port_power_domain(struct intel_encoder *intel_encoder)
 		return POWER_DOMAIN_PORT_DSI;
 	default:
 		return POWER_DOMAIN_PORT_OTHER;
+	}
+}
+
+enum intel_display_power_domain
+intel_display_port_aux_power_domain(struct intel_encoder *intel_encoder)
+{
+	struct drm_device *dev = intel_encoder->base.dev;
+	struct intel_digital_port *intel_dig_port;
+
+	switch (intel_encoder->type) {
+	case INTEL_OUTPUT_UNKNOWN:
+		/* Only DDI platforms should ever use this output type */
+		WARN_ON_ONCE(!HAS_DDI(dev));
+	case INTEL_OUTPUT_DISPLAYPORT:
+	case INTEL_OUTPUT_EDP:
+		intel_dig_port = enc_to_dig_port(&intel_encoder->base);
+		return port_to_aux_power_domain(intel_dig_port->port);
+	case INTEL_OUTPUT_DP_MST:
+		intel_dig_port = enc_to_mst(&intel_encoder->base)->primary;
+		return port_to_aux_power_domain(intel_dig_port->port);
+	default:
+		WARN_ON_ONCE(1);
+		return POWER_DOMAIN_AUX_A;
 	}
 }
 
@@ -5717,31 +5760,15 @@ void skl_uninit_cdclk(struct drm_i915_private *dev_priv)
 	if (I915_READ(DBUF_CTL) & DBUF_POWER_STATE)
 		DRM_ERROR("DBuf power disable timeout\n");
 
-	/*
-	 * DMC assumes ownership of LCPLL and will get confused if we touch it.
-	 */
-	if (dev_priv->csr.dmc_payload) {
-		/* disable DPLL0 */
-		I915_WRITE(LCPLL1_CTL, I915_READ(LCPLL1_CTL) &
-					~LCPLL_PLL_ENABLE);
-		if (wait_for(!(I915_READ(LCPLL1_CTL) & LCPLL_PLL_LOCK), 1))
-			DRM_ERROR("Couldn't disable DPLL0\n");
-	}
-
-	intel_display_power_put(dev_priv, POWER_DOMAIN_PLLS);
+	/* disable DPLL0 */
+	I915_WRITE(LCPLL1_CTL, I915_READ(LCPLL1_CTL) & ~LCPLL_PLL_ENABLE);
+	if (wait_for(!(I915_READ(LCPLL1_CTL) & LCPLL_PLL_LOCK), 1))
+		DRM_ERROR("Couldn't disable DPLL0\n");
 }
 
 void skl_init_cdclk(struct drm_i915_private *dev_priv)
 {
-	u32 val;
 	unsigned int required_vco;
-
-	/* enable PCH reset handshake */
-	val = I915_READ(HSW_NDE_RSTWRN_OPT);
-	I915_WRITE(HSW_NDE_RSTWRN_OPT, val | RESET_PCH_HANDSHAKE_ENABLE);
-
-	/* enable PG1 and Misc I/O */
-	intel_display_power_get(dev_priv, POWER_DOMAIN_PLLS);
 
 	/* DPLL0 not enabled (happens on early BIOS versions) */
 	if (!(I915_READ(LCPLL1_CTL) & LCPLL_PLL_ENABLE)) {
@@ -13345,6 +13372,9 @@ static int intel_atomic_commit(struct drm_device *dev,
 			to_intel_crtc_state(crtc->state)->update_pipe;
 		unsigned long put_domains = 0;
 
+		if (modeset)
+			intel_display_power_get(dev_priv, POWER_DOMAIN_MODESET);
+
 		if (modeset && crtc->state->active) {
 			update_scanline_offset(to_intel_crtc(crtc));
 			dev_priv->display.crtc_enable(crtc);
@@ -13368,6 +13398,9 @@ static int intel_atomic_commit(struct drm_device *dev,
 			modeset_put_power_domains(dev_priv, put_domains);
 
 		intel_post_plane_update(intel_crtc);
+
+		if (modeset)
+			intel_display_power_put(dev_priv, POWER_DOMAIN_MODESET);
 	}
 
 	/* FIXME: add subpixel order */
