@@ -905,7 +905,6 @@ struct i915_fbc {
 	/* This is always the inner lock when overlapping with struct_mutex and
 	 * it's the outer lock when overlapping with stolen_lock. */
 	struct mutex lock;
-	unsigned long uncompressed_size;
 	unsigned threshold;
 	unsigned int fb_id;
 	unsigned int possible_framebuffer_bits;
@@ -918,21 +917,21 @@ struct i915_fbc {
 
 	bool false_color;
 
-	/* Tracks whether the HW is actually enabled, not whether the feature is
-	 * possible. */
 	bool enabled;
+	bool active;
 
 	struct intel_fbc_work {
-		struct delayed_work work;
-		struct intel_crtc *crtc;
+		bool scheduled;
+		struct work_struct work;
 		struct drm_framebuffer *fb;
-	} *fbc_work;
+		unsigned long enable_jiffies;
+	} work;
 
 	const char *no_fbc_reason;
 
-	bool (*fbc_enabled)(struct drm_i915_private *dev_priv);
-	void (*enable_fbc)(struct intel_crtc *crtc);
-	void (*disable_fbc)(struct drm_i915_private *dev_priv);
+	bool (*is_active)(struct drm_i915_private *dev_priv);
+	void (*activate)(struct intel_crtc *crtc);
+	void (*deactivate)(struct drm_i915_private *dev_priv);
 };
 
 /**
