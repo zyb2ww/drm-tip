@@ -1,0 +1,36 @@
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c b/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c
+index 196fb0b35ca9..7ba5a00b3b68 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c
+@@ -531,13 +531,7 @@ out_no_fence:
+ }
+ 
+ static struct drm_crtc_funcs vmw_screen_object_crtc_funcs = {
+-<<<<<<< HEAD
+-	.save = vmw_du_crtc_save,
+-	.restore = vmw_du_crtc_restore,
+ 	.cursor_set2 = vmw_du_crtc_cursor_set2,
+-=======
+-	.cursor_set = vmw_du_crtc_cursor_set,
+->>>>>>> drm-upstream/drm-next
+ 	.cursor_move = vmw_du_crtc_cursor_move,
+ 	.gamma_set = vmw_du_crtc_gamma_set,
+ 	.destroy = vmw_sou_crtc_destroy,
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c b/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
+index 23c6b38435ba..58c38e7723d8 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
+@@ -1041,13 +1041,7 @@ out_finish:
+  *  Screen Target CRTC dispatch table
+  */
+ static struct drm_crtc_funcs vmw_stdu_crtc_funcs = {
+-<<<<<<< HEAD
+-	.save = vmw_du_crtc_save,
+-	.restore = vmw_du_crtc_restore,
+ 	.cursor_set2 = vmw_du_crtc_cursor_set2,
+-=======
+-	.cursor_set = vmw_du_crtc_cursor_set,
+->>>>>>> drm-upstream/drm-next
+ 	.cursor_move = vmw_du_crtc_cursor_move,
+ 	.gamma_set = vmw_du_crtc_gamma_set,
+ 	.destroy = vmw_stdu_crtc_destroy,
