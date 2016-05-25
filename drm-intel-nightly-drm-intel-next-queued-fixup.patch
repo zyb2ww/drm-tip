@@ -1,0 +1,49 @@
+diff --git a/drivers/gpu/drm/i915/intel_lrc.c b/drivers/gpu/drm/i915/intel_lrc.c
+index 52c8f0d650c5..5c191a1afaaf 100644
+--- a/drivers/gpu/drm/i915/intel_lrc.c
++++ b/drivers/gpu/drm/i915/intel_lrc.c
+@@ -705,11 +705,6 @@ int intel_logical_ring_alloc_request_extras(struct drm_i915_gem_request *request
+ 			return ret;
+ 	}
+ 
+-<<<<<<< HEAD
+-	if (request->ctx != request->i915->kernel_context)
+-		ret = intel_lr_context_pin(request->ctx, request->engine);
+-
+-=======
+ 	ret = intel_lr_context_pin(request->ctx, engine);
+ 	if (ret)
+ 		return ret;
+@@ -738,7 +733,6 @@ int intel_logical_ring_alloc_request_extras(struct drm_i915_gem_request *request
+ 
+ err_unpin:
+ 	intel_lr_context_unpin(request->ctx, engine);
+->>>>>>> origin/drm-intel-next-queued
+ 	return ret;
+ }
+ 
+@@ -790,24 +784,6 @@ intel_logical_ring_advance_and_submit(struct drm_i915_gem_request *request)
+ 	return 0;
+ }
+ 
+-<<<<<<< HEAD
+-int intel_logical_ring_reserve_space(struct drm_i915_gem_request *request)
+-{
+-	/*
+-	 * The first call merely notes the reserve request and is common for
+-	 * all back ends. The subsequent localised _begin() call actually
+-	 * ensures that the reservation is available. Without the begin, if
+-	 * the request creator immediately submitted the request without
+-	 * adding any commands to it then there might not actually be
+-	 * sufficient room for the submission commands.
+-	 */
+-	intel_ring_reserved_space_reserve(request->ringbuf, MIN_SPACE_FOR_ADD_REQUEST);
+-
+-	return intel_ring_begin(request, 0);
+-}
+-
+-=======
+->>>>>>> origin/drm-intel-next-queued
+ /**
+  * execlists_submission() - submit a batchbuffer for execution, Execlists style
+  * @dev: DRM device.
