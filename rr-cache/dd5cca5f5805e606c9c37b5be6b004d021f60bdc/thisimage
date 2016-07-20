@@ -5715,7 +5715,7 @@ static void valleyview_cleanup_pctx(struct drm_i915_private *dev_priv)
 	if (WARN_ON(!dev_priv->vlv_pctx))
 		return;
 
-	drm_gem_object_unreference_unlocked(&dev_priv->vlv_pctx->base);
+	i915_gem_object_put_unlocked(dev_priv->vlv_pctx);
 	dev_priv->vlv_pctx = NULL;
 }
 
@@ -7794,7 +7794,7 @@ static void __intel_rps_boost_work(struct work_struct *work)
 	if (!i915_gem_request_completed(req))
 		gen6_rps_boost(req->i915, NULL, req->emitted_jiffies);
 
-	i915_gem_request_unreference(req);
+	i915_gem_request_put(req);
 	kfree(boost);
 }
 
@@ -7812,8 +7812,7 @@ void intel_queue_rps_boost_for_request(struct drm_i915_gem_request *req)
 	if (boost == NULL)
 		return;
 
-	i915_gem_request_reference(req);
-	boost->req = req;
+	boost->req = i915_gem_request_get(req);
 
 	INIT_WORK(&boost->work, __intel_rps_boost_work);
 	queue_work(req->i915->wq, &boost->work);

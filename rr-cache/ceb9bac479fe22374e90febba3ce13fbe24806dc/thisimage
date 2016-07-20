@@ -641,7 +641,7 @@ void intel_fini_pipe_control(struct intel_engine_cs *engine)
 		return;
 
 	i915_gem_object_ggtt_unpin(engine->scratch.obj);
-	drm_gem_object_unreference(&engine->scratch.obj->base);
+	i915_gem_object_put(engine->scratch.obj);
 	engine->scratch.obj = NULL;
 }
 
@@ -672,7 +672,7 @@ int intel_init_pipe_control(struct intel_engine_cs *engine, int size)
 	return 0;
 
 err_unref:
-	drm_gem_object_unreference(&engine->scratch.obj->base);
+	i915_gem_object_put(engine->scratch.obj);
 err:
 	return ret;
 }
@@ -1336,7 +1336,7 @@ static void render_ring_cleanup(struct intel_engine_cs *engine)
 
 	if (dev_priv->semaphore_obj) {
 		i915_gem_object_ggtt_unpin(dev_priv->semaphore_obj);
-		drm_gem_object_unreference(&dev_priv->semaphore_obj->base);
+		i915_gem_object_put(dev_priv->semaphore_obj);
 		dev_priv->semaphore_obj = NULL;
 	}
 
@@ -1922,7 +1922,7 @@ static void cleanup_status_page(struct intel_engine_cs *engine)
 
 	kunmap(sg_page(obj->pages->sgl));
 	i915_gem_object_ggtt_unpin(obj);
-	drm_gem_object_unreference(&obj->base);
+	i915_gem_object_put(obj);
 	engine->status_page.obj = NULL;
 }
 
@@ -1960,7 +1960,7 @@ static int init_status_page(struct intel_engine_cs *engine)
 		ret = i915_gem_obj_ggtt_pin(obj, 4096, flags);
 		if (ret) {
 err_unref:
-			drm_gem_object_unreference(&obj->base);
+			i915_gem_object_put(obj);
 			return ret;
 		}
 
@@ -1996,14 +1996,14 @@ static int init_phys_status_page(struct intel_engine_cs *engine)
 
 void intel_unpin_ringbuffer_obj(struct intel_ringbuffer *ringbuf)
 {
-	GEM_BUG_ON(ringbuf->vma == NULL);
-	GEM_BUG_ON(ringbuf->virtual_start == NULL);
+	GEM_BUG_ON(!ringbuf->vma);
+	GEM_BUG_ON(!ringbuf->vaddr);
 
 	if (HAS_LLC(ringbuf->obj->base.dev) && !ringbuf->obj->stolen)
 		i915_gem_object_unpin_map(ringbuf->obj);
 	else
 		i915_vma_unpin_iomap(ringbuf->vma);
-	ringbuf->virtual_start = NULL;
+	ringbuf->vaddr = NULL;
 
 	i915_gem_object_ggtt_unpin(ringbuf->obj);
 	ringbuf->vma = NULL;
@@ -2045,14 +2045,15 @@ int intel_pin_and_map_ringbuffer_obj(struct drm_i915_private *dev_priv,
 		/* Access through the GTT requires the device to be awake. */
 		assert_rpm_wakelock_held(dev_priv);
 
-		addr = i915_vma_pin_iomap(i915_gem_obj_to_ggtt(obj));
+		addr = (void __force *)
+			i915_vma_pin_iomap(i915_gem_obj_to_ggtt(obj));
 		if (IS_ERR(addr)) {
 			ret = PTR_ERR(addr);
 			goto err_unpin;
 		}
 	}
 
-	ringbuf->virtual_start = addr;
+	ringbuf->vaddr = addr;
 	ringbuf->vma = i915_gem_obj_to_ggtt(obj);
 	return 0;
 
@@ -2063,7 +2064,7 @@ err_unpin:
 
 static void intel_destroy_ringbuffer_obj(struct intel_ringbuffer *ringbuf)
 {
-	drm_gem_object_unreference(&ringbuf->obj->base);
+	i915_gem_object_put(ringbuf->obj);
 	ringbuf->obj = NULL;
 }
 
@@ -2163,7 +2164,7 @@ static int intel_ring_context_pin(struct i915_gem_context *ctx,
 	if (ctx == ctx->i915->kernel_context)
 		ce->initialised = true;
 
-	i915_gem_context_reference(ctx);
+	i915_gem_context_get(ctx);
 	return 0;
 
 error:
@@ -2184,7 +2185,7 @@ static void intel_ring_context_unpin(struct i915_gem_context *ctx,
 	if (ce->state)
 		i915_gem_object_ggtt_unpin(ce->state);
 
-	i915_gem_context_unreference(ctx);
+	i915_gem_context_put(ctx);
 }
 
 static int intel_init_ring_buffer(struct intel_engine_cs *engine)
@@ -2414,8 +2415,7 @@ int intel_ring_begin(struct drm_i915_gem_request *req, int num_dwords)
 		GEM_BUG_ON(ringbuf->tail + remain_actual > ringbuf->size);
 
 		/* Fill the tail with MI_NOOP */
-		memset(ringbuf->virtual_start + ringbuf->tail,
-		       0, remain_actual);
+		memset(ringbuf->vaddr + ringbuf->tail, 0, remain_actual);
 		ringbuf->tail = 0;
 		ringbuf->space -= remain_actual;
 	}
@@ -2703,7 +2703,7 @@ static void intel_ring_init_semaphores(struct drm_i915_private *dev_priv,
 	struct drm_i915_gem_object *obj;
 	int ret, i;
 
-	if (!i915_semaphore_is_enabled(dev_priv))
+	if (!i915.semaphores)
 		return;
 
 	if (INTEL_GEN(dev_priv) >= 8 && !dev_priv->semaphore_obj) {
@@ -2715,7 +2715,7 @@ static void intel_ring_init_semaphores(struct drm_i915_private *dev_priv,
 			i915_gem_object_set_cache_level(obj, I915_CACHE_LLC);
 			ret = i915_gem_obj_ggtt_pin(obj, 0, PIN_NONBLOCK);
 			if (ret != 0) {
-				drm_gem_object_unreference(&obj->base);
+				i915_gem_object_put(obj);
 				DRM_ERROR("Failed to pin semaphore bo. Disabling semaphores\n");
 				i915.semaphores = 0;
 			} else {
@@ -2724,7 +2724,7 @@ static void intel_ring_init_semaphores(struct drm_i915_private *dev_priv,
 		}
 	}
 
-	if (!i915_semaphore_is_enabled(dev_priv))
+	if (!i915.semaphores)
 		return;
 
 	if (INTEL_GEN(dev_priv) >= 8) {
@@ -2862,7 +2862,7 @@ int intel_init_render_ring_buffer(struct intel_engine_cs *engine)
 		engine->init_context = intel_rcs_ctx_init;
 		engine->add_request = gen8_render_add_request;
 		engine->flush = gen8_render_ring_flush;
-		if (i915_semaphore_is_enabled(dev_priv))
+		if (i915.semaphores)
 			engine->semaphore.signal = gen8_rcs_signal;
 	} else if (INTEL_GEN(dev_priv) >= 6) {
 		engine->init_context = intel_rcs_ctx_init;
