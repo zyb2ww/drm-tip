@@ -590,12 +590,6 @@ struct intel_crtc_state {
 	/* Selected dpll when shared or NULL. */
 	struct intel_shared_dpll *shared_dpll;
 
-	/*
-	 * - PORT_CLK_SEL for DDI ports on HSW/BDW.
-	 * - enum skl_dpll on SKL
-	 */
-	uint32_t ddi_pll_sel;
-
 	/* Actual register state of the dpll, for shared dpll cross-checking. */
 	struct intel_dpll_hw_state dpll_hw_state;
 
@@ -1136,7 +1130,7 @@ void intel_crt_reset(struct drm_encoder *encoder);
 
 /* intel_ddi.c */
 void intel_ddi_clk_select(struct intel_encoder *encoder,
-			  const struct intel_crtc_state *pipe_config);
+			  struct intel_shared_dpll *pll);
 void intel_ddi_fdi_post_disable(struct intel_encoder *intel_encoder,
 				struct intel_crtc_state *old_crtc_state,
 				struct drm_connector_state *old_conn_state);
@@ -1383,7 +1377,8 @@ bool intel_dp_init(struct drm_device *dev, i915_reg_t output_reg, enum port port
 bool intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
 			     struct intel_connector *intel_connector);
 void intel_dp_set_link_params(struct intel_dp *intel_dp,
-			      const struct intel_crtc_state *pipe_config);
+			      int link_rate, uint8_t lane_count,
+			      bool link_mst);
 void intel_dp_start_link_train(struct intel_dp *intel_dp);
 void intel_dp_stop_link_train(struct intel_dp *intel_dp);
 void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode);
