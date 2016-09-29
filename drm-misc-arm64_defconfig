@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm64 4.8.0-rc2 Kernel Configuration
+# Linux/arm64 4.8.0-rc8 Kernel Configuration
 #
 CONFIG_ARM64=y
 CONFIG_64BIT=y
@@ -1174,7 +1174,6 @@ CONFIG_VIRTIO_BLK=y
 # CONFIG_ISL29003 is not set
 # CONFIG_ISL29020 is not set
 # CONFIG_SENSORS_TSL2550 is not set
-# CONFIG_SENSORS_BH1780 is not set
 # CONFIG_SENSORS_BH1770 is not set
 # CONFIG_SENSORS_APDS990X is not set
 # CONFIG_HMC6352 is not set
@@ -3842,7 +3841,7 @@ CONFIG_RCAR_DMAC=y
 #
 # DMABUF options
 #
-# CONFIG_SYNC_FILE is not set
+CONFIG_SYNC_FILE=y
 # CONFIG_AUXDISPLAY is not set
 # CONFIG_UIO is not set
 CONFIG_VFIO_IOMMU_TYPE1=y
@@ -4077,6 +4076,7 @@ CONFIG_IIO=y
 # CONFIG_MXC4005 is not set
 # CONFIG_MXC6255 is not set
 # CONFIG_STK8312 is not set
+# CONFIG_STK8BA50 is not set
 
 #
 # Analog to digital converters

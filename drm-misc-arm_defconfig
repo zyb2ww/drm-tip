@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm 4.8.0-rc2 Kernel Configuration
+# Linux/arm 4.8.0-rc8 Kernel Configuration
 #
 CONFIG_ARM=y
 CONFIG_ARM_HAS_SG_CHAIN=y
@@ -1454,7 +1454,6 @@ CONFIG_APDS9802ALS=y
 CONFIG_ISL29003=y
 # CONFIG_ISL29020 is not set
 # CONFIG_SENSORS_TSL2550 is not set
-# CONFIG_SENSORS_BH1780 is not set
 # CONFIG_SENSORS_BH1770 is not set
 # CONFIG_SENSORS_APDS990X is not set
 # CONFIG_HMC6352 is not set
@@ -5168,7 +5167,7 @@ CONFIG_DMA_ENGINE_RAID=y
 #
 # DMABUF options
 #
-# CONFIG_SYNC_FILE is not set
+CONFIG_SYNC_FILE=y
 # CONFIG_AUXDISPLAY is not set
 # CONFIG_UIO is not set
 # CONFIG_VFIO is not set
