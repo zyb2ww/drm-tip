@@ -1,0 +1,71 @@
+From 7870cb34bef57b4e4384f1b7fcafc58b3d597f43 Mon Sep 17 00:00:00 2001
+From: Jani Nikula <jani.nikula@intel.com>
+Date: Mon, 10 Oct 2016 14:25:15 +0300
+Subject: [PATCH] Revert "drm/i915/gen9: only add the planes actually affected
+ by ddb changes"
+Organization: Intel Finland Oy - BIC 0357606-4 - Westendinkatu 7, 02160 Espoo
+Cc: Jani Nikula <jani.nikula@intel.com>
+
+This reverts commit 263d706ef83a2ede499ff5d34458437593aa87d8.
+---
+ drivers/gpu/drm/i915/intel_pm.c | 37 +------------------------------------
+ 1 file changed, 1 insertion(+), 36 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/intel_pm.c b/drivers/gpu/drm/i915/intel_pm.c
+index a2f751cd187a..f3d370a764a3 100644
+--- a/drivers/gpu/drm/i915/intel_pm.c
++++ b/drivers/gpu/drm/i915/intel_pm.c
+@@ -3962,41 +3962,6 @@ pipes_modified(struct drm_atomic_state *state)
+ 	return ret;
+ }
+ 
+-int
+-skl_ddb_add_affected_planes(struct intel_crtc_state *cstate)
+-{
+-	struct drm_atomic_state *state = cstate->base.state;
+-	struct drm_device *dev = state->dev;
+-	struct drm_crtc *crtc = cstate->base.crtc;
+-	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
+-	struct drm_i915_private *dev_priv = to_i915(dev);
+-	struct intel_atomic_state *intel_state = to_intel_atomic_state(state);
+-	struct skl_ddb_allocation *new_ddb = &intel_state->wm_results.ddb;
+-	struct skl_ddb_allocation *cur_ddb = &dev_priv->wm.skl_hw.ddb;
+-	struct drm_plane_state *plane_state;
+-	struct drm_plane *plane;
+-	enum pipe pipe = intel_crtc->pipe;
+-	int id;
+-
+-	WARN_ON(!drm_atomic_get_existing_crtc_state(state, crtc));
+-
+-	drm_for_each_plane_mask(plane, dev, crtc->state->plane_mask) {
+-		id = skl_wm_plane_id(to_intel_plane(plane));
+-
+-		if (skl_ddb_entry_equal(&cur_ddb->plane[pipe][id],
+-					&new_ddb->plane[pipe][id]) &&
+-		    skl_ddb_entry_equal(&cur_ddb->y_plane[pipe][id],
+-					&new_ddb->y_plane[pipe][id]))
+-			continue;
+-
+-		plane_state = drm_atomic_get_plane_state(state, plane);
+-		if (IS_ERR(plane_state))
+-			return PTR_ERR(plane_state);
+-	}
+-
+-	return 0;
+-}
+-
+ static int
+ skl_compute_ddb(struct drm_atomic_state *state)
+ {
+@@ -4061,7 +4026,7 @@ skl_compute_ddb(struct drm_atomic_state *state)
+ 		if (ret)
+ 			return ret;
+ 
+-		ret = skl_ddb_add_affected_planes(cstate);
++		ret = drm_atomic_add_affected_planes(state, &intel_crtc->base);
+ 		if (ret)
+ 			return ret;
+ 	}
+-- 
+2.1.4
+
