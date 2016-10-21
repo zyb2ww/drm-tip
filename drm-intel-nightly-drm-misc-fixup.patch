@@ -1,0 +1,48 @@
+diff --git a/drivers/gpu/drm/i915/intel_display.c b/drivers/gpu/drm/i915/intel_display.c
+index c2a8df968b03..a94f7d195db4 100644
+--- a/drivers/gpu/drm/i915/intel_display.c
++++ b/drivers/gpu/drm/i915/intel_display.c
+@@ -15074,18 +15074,18 @@ static struct drm_plane *intel_primary_plane_create(struct drm_device *dev,
+ 	if (ret)
+ 		goto fail;
+ 
+-	if (INTEL_GEN(dev) >= 9) {
++	if (INTEL_GEN(dev_priv) >= 9) {
+ 		supported_rotations =
+ 			DRM_ROTATE_0 | DRM_ROTATE_90 |
+ 			DRM_ROTATE_180 | DRM_ROTATE_270;
+-	} else if (INTEL_GEN(dev) >= 4) {
++	} else if (INTEL_GEN(dev_priv) >= 4) {
+ 		supported_rotations =
+ 			DRM_ROTATE_0 | DRM_ROTATE_180;
+ 	} else {
+ 		supported_rotations = DRM_ROTATE_0;
+ 	}
+ 
+-	if (INTEL_GEN(dev) >= 4)
++	if (INTEL_GEN(dev_priv) >= 4)
+ 		drm_plane_create_rotation_property(&primary->base,
+ 						   DRM_ROTATE_0,
+ 						   supported_rotations);
+@@ -15228,7 +15228,7 @@ static struct drm_plane *intel_cursor_plane_create(struct drm_device *dev,
+ 	if (ret)
+ 		goto fail;
+ 
+-	if (INTEL_GEN(dev) >= 4)
++	if (INTEL_GEN(to_i915(dev)) >= 4)
+ 		drm_plane_create_rotation_property(&cursor->base,
+ 						   DRM_ROTATE_0,
+ 						   DRM_ROTATE_0 |
+diff --git a/drivers/gpu/drm/i915/intel_sprite.c b/drivers/gpu/drm/i915/intel_sprite.c
+index 9436d041389f..43d0350856e7 100644
+--- a/drivers/gpu/drm/i915/intel_sprite.c
++++ b/drivers/gpu/drm/i915/intel_sprite.c
+@@ -1126,7 +1126,7 @@ intel_plane_init(struct drm_device *dev, enum pipe pipe, int plane)
+ 		goto fail;
+ 	}
+ 
+-	if (INTEL_GEN(dev) >= 9) {
++	if (INTEL_GEN(dev_priv) >= 9) {
+ 		supported_rotations =
+ 			DRM_ROTATE_0 | DRM_ROTATE_90 |
+ 			DRM_ROTATE_180 | DRM_ROTATE_270;
