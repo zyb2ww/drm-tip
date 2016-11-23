@@ -1,0 +1,50 @@
+drm-intel/drm-intel-fixes 07d9a380680d1c0eb51ef87ff2eab5c994949e69
+	Linux 4.9-rc2
+<<<<<<<
+drm-upstream/drm-fixes 26beaee9bb07be20cc641c1251152e280e80f54e
+	Merge branch 'drm-etnaviv-fixes' of git://git.pengutronix.de/lst/linux into drm-fixes
+drm-intel/drm-intel-next-fixes 105f1a65b04a8f4f7abec11b200b1fb54f3d4b46
+	drm/i915: Fix conflict resolution from backmerge of v4.8-rc8 to drm-next
+drm-intel/drm-intel-next-queued de867c20b94b6d52a0b10cb02f10a1f475abf7f5
+	drm/i915: Include the kernel uptime in the error state
+drm-upstream/drm-next 5481e27f6fd06b7cb902072e81d6b083db8155eb
+	Merge tag 'drm-intel-next-2016-10-24' of git://anongit.freedesktop.org/drm-intel into drm-next
+sound-upstream/for-next 1a3f099101b85cc93d864eb030d97e7725c72ea7
+	ALSA: hda - Fix surround output pins for ASRock B150M mobo
+sound-upstream/for-linus 1a3f099101b85cc93d864eb030d97e7725c72ea7
+	ALSA: hda - Fix surround output pins for ASRock B150M mobo
+drm-intel/topic/drm-fixes c6935931c1894ff857616ff8549b61236a19148f
+	Linux 4.8-rc5
+drm-intel/topic/drm-misc f54d1867005c3323f5d8ad83eed823e84226c429
+	dma-buf: Rename struct fence to dma_fence
+=======
+drm-upstream/drm-fixes 7cf321d118a825c1541b43ca45294126fd474efa
+	drm/drivers: add support for using the arch wc mapping API.
+drm-intel/drm-intel-next-fixes 105f1a65b04a8f4f7abec11b200b1fb54f3d4b46
+	drm/i915: Fix conflict resolution from backmerge of v4.8-rc8 to drm-next
+drm-intel/drm-intel-next-queued 3299e7e43484a85eeb5c7ec09958bff05c9d0543
+	drm/i915: Remove two invalid warns
+drm-upstream/drm-next 5481e27f6fd06b7cb902072e81d6b083db8155eb
+	Merge tag 'drm-intel-next-2016-10-24' of git://anongit.freedesktop.org/drm-intel into drm-next
+sound-upstream/for-next 9b50898ad96c793a8f7cde9d8f281596d752a7dd
+	ALSA: seq: Fix time account regression
+sound-upstream/for-linus 9b50898ad96c793a8f7cde9d8f281596d752a7dd
+	ALSA: seq: Fix time account regression
+drm-intel/topic/drm-fixes c6935931c1894ff857616ff8549b61236a19148f
+	Linux 4.8-rc5
+drm-intel/topic/drm-misc ce6e153f414a73a52fa1498489ce4adf20229445
+	drm/bridge: add Silicon Image SiI8620 driver
+>>>>>>>
+drm-misc/drm-misc-next 7fb71c8f4f45afe73d307181be87c877447d0e47
+	drm/i915: Handle early failure during intel_get_load_detect_pipe
+drm-intel/topic/core-for-CI 6ce0819c3c8ffe3666ec993303dbf4c1612890df
+	kbuild: Disable PIE by default
+drm-misc/drm-misc-next-fixes 1001354ca34179f3db924eb66672442a173147dc
+	Linux 4.9-rc1
+<<<<<<<
+drm-misc/drm-misc-fixes 1001354ca34179f3db924eb66672442a173147dc
+	Linux 4.9-rc1
+=======
+drm-misc/drm-misc-fixes 87d3b6588f9bf205902868d3e5baf68e37ad4ae1
+	drm/fb-helper: Don't call dirty callback for untouched clips
+>>>>>>>

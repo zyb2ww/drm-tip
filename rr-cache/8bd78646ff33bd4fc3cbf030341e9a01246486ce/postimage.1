@@ -1,0 +1,63 @@
+# drm-intel-nightly configuration
+#
+# sourced as a bash script from dim
+
+#
+# drm-tip <repo> to <url> associative array (declared in dim)
+#
+# <repo> (the key) is a symbolic name used for drm_tip_config, must match
+# [a-z-]+
+#
+drm_tip_repos[drm-intel]="ssh://git.freedesktop.org/git/drm-intel"
+drm_tip_repos[drm-upstream]="git://people.freedesktop.org/~airlied/linux"
+drm_tip_repos[sound-upstream]="git://git.kernel.org/pub/scm/linux/kernel/git/tiwai/sound.git"
+
+#
+# drm-tip branch configuration array (declared in dim)
+#
+# Ordered list of branches in repos to merge to the drm-tip integration branch.
+#
+# Each entry is a string in format: <repo> <branch> [<override-sha1>]
+#
+# The closing line is used for scripted updates, do not modify.
+#
+drm_tip_config=(
+	"drm-intel		drm-intel-fixes"
+	"drm-upstream		drm-fixes"
+	"drm-intel		drm-intel-next-fixes"
+	"drm-intel		drm-intel-next-queued"
+	"drm-upstream		drm-next"
+	"sound-upstream		for-next"
+	"sound-upstream		for-linus"
+	"drm-intel		topic/drm-fixes"
+	"drm-intel		topic/drm-misc"
+	"drm-intel		topic/core-for-CI"
+) # DO NOT CHANGE THIS LINE
+
+
+#
+# nightly branches configuration for backwards compatibility with old dim
+# versions. Deprecated, but must be kept in sync with the above for the
+# transition period.
+#
+
+nightly_branches=""
+nightly_branches="$nightly_branches drm-intel/drm-intel-fixes"
+nightly_branches="$nightly_branches drm-upstream/drm-fixes"
+nightly_branches="$nightly_branches drm-intel/drm-intel-next-fixes"
+nightly_branches="$nightly_branches drm-intel/drm-intel-next-queued"
+nightly_branches="$nightly_branches drm-upstream/drm-next"
+nightly_branches="$nightly_branches sound-upstream/for-next"
+nightly_branches="$nightly_branches sound-upstream/for-linus"
+nightly_branches="$nightly_branches drm-intel/topic/drm-fixes"
+nightly_branches="$nightly_branches drm-intel/topic/drm-misc"
+nightly_branches="$nightly_branches drm-misc/drm-misc-next"
+nightly_branches="$nightly_branches drm-intel/topic/core-for-CI"
+
+nightly_remote_url_origin="ssh://git.freedesktop.org/git/drm-tip"
+nightly_remote_url_drm_intel="ssh://git.freedesktop.org/git/drm-intel"
+nightly_remote_url_drm_misc="ssh://git.freedesktop.org/git/drm-misc"
+nightly_remote_url_drm_upstream="git://people.freedesktop.org/~airlied/linux"
+nightly_remote_url_sound_upstream="git://git.kernel.org/pub/scm/linux/kernel/git/tiwai/sound.git"
+nightly_branches="$nightly_branches drm-misc/drm-misc-next-fixes"
+nightly_branches="$nightly_branches drm-misc/drm-misc-fixes"
