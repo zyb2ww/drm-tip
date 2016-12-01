@@ -1,0 +1,41 @@
+From d849c8d16472b405bd5a6429b784ab22b3d5bc9d Mon Sep 17 00:00:00 2001
+From: Archit Taneja <architt@codeaurora.org>
+Date: Tue, 29 Nov 2016 10:03:13 +0530
+Subject: [PATCH] drm-misc: Update defconfigs
+
+Update arm/arm64 defconfigs to add DRM_I2C_ADV7511_AUDIO.
+
+Signed-off-by: Archit Taneja <architt@codeaurora.org>
+---
+ drm-misc-arm64_defconfig | 1 +
+ drm-misc-arm_defconfig   | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/drm-misc-arm64_defconfig b/drm-misc-arm64_defconfig
+index 88b9d88..8b842c2 100644
+--- a/drm-misc-arm64_defconfig
++++ b/drm-misc-arm64_defconfig
+@@ -2927,6 +2927,7 @@ CONFIG_DRM_SII902X=m
+ CONFIG_DRM_TOSHIBA_TC358767=m
+ CONFIG_DRM_ANALOGIX_DP=m
+ CONFIG_DRM_I2C_ADV7511=m
++CONFIG_DRM_I2C_ADV7511_AUDIO=y
+ CONFIG_DRM_I2C_ADV7533=y
+ CONFIG_DRM_ARCPGU=m
+ CONFIG_DRM_HISI_KIRIN=m
+diff --git a/drm-misc-arm_defconfig b/drm-misc-arm_defconfig
+index 6eea2d4..028bc2e 100644
+--- a/drm-misc-arm_defconfig
++++ b/drm-misc-arm_defconfig
+@@ -4026,6 +4026,7 @@ CONFIG_DRM_SII902X=m
+ CONFIG_DRM_TOSHIBA_TC358767=m
+ CONFIG_DRM_ANALOGIX_DP=m
+ CONFIG_DRM_I2C_ADV7511=m
++CONFIG_DRM_I2C_ADV7511_AUDIO=y
+ CONFIG_DRM_I2C_ADV7533=y
+ CONFIG_DRM_STI=m
+ CONFIG_DRM_IMX=m
+-- 
+The Qualcomm Innovation Center, Inc. is a member of the Code Aurora Forum,
+hosted by The Linux Foundation
+
