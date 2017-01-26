@@ -23,7 +23,7 @@ index 8ccc89fb48c8..a53b6f0cbcdb 100644
     :doc:  LPE Audio integration for HDMI or DP playback
  
  .. kernel-doc:: drivers/gpu/drm/i915/intel_lpe_audio.c
-->>>>>>> takashi/for-next
+->>>>>>>
     :internal:
  
  Memory Management and Command Submission
