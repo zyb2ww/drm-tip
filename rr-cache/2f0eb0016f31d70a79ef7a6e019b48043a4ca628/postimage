@@ -1,0 +1,483 @@
+/*
+ * Copyright (C) 2007 Ben Skeggs.
+ * All Rights Reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the
+ * next paragraph) shall be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE COPYRIGHT OWNER(S) AND/OR ITS SUPPLIERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ */
+
+#include <drm/drmP.h>
+
+#include <linux/ktime.h>
+#include <linux/hrtimer.h>
+
+#include "nouveau_drm.h"
+#include "nouveau_dma.h"
+#include "nouveau_fence.h"
+#include <trace/events/fence.h>
+
+#include <engine/fifo.h>
+
+static const struct fence_ops nouveau_fence_ops_uevent;
+static const struct fence_ops nouveau_fence_ops_legacy;
+
+static void
+nouveau_fence_signal(struct nouveau_fence *fence)
+{
+	__fence_signal(&fence->base);
+	list_del(&fence->head);
+
+	if (fence->base.ops == &nouveau_fence_ops_uevent &&
+	    fence->event.head.next) {
+		struct nouveau_event *event;
+
+		list_del(&fence->event.head);
+		fence->event.head.next = NULL;
+
+		event = container_of(fence->base.lock, typeof(*event), list_lock);
+		nouveau_event_put(&fence->event);
+	}
+
+	fence_put(&fence->base);
+}
+
+static struct nouveau_fence *
+nouveau_local_fence(struct fence *fence, struct nouveau_drm *drm) {
+	struct nouveau_fence_priv *priv = (void*)drm->fence;
+	struct nouveau_fence *f = container_of(fence,
+					       struct nouveau_fence,
+					       base);
+
+	if (fence->ops != &nouveau_fence_ops_legacy &&
+	    fence->ops != &nouveau_fence_ops_uevent)
+		return NULL;
+
+	if (fence->context < priv->context_base ||
+	    fence->context >= priv->context_base + priv->contexts)
+		return NULL;
+
+	return f;
+}
+
+void
+nouveau_fence_context_del(struct nouveau_fence_chan *fctx)
+{
+	struct nouveau_fence *fence, *fnext;
+
+	spin_lock_irq(fctx->lock);
+	list_for_each_entry_safe(fence, fnext, &fctx->pending, head)
+		nouveau_fence_signal(fence);
+	spin_unlock_irq(fctx->lock);
+}
+
+void
+nouveau_fence_context_new(struct nouveau_channel *chan, struct nouveau_fence_chan *fctx)
+{
+	struct nouveau_fifo *pfifo = nouveau_fifo(chan->drm->device);
+	struct nouveau_fifo_chan *fifo = (void*)chan->object;
+
+	fctx->lock = &pfifo->uevent->list_lock;
+	INIT_LIST_HEAD(&fctx->flip);
+	INIT_LIST_HEAD(&fctx->pending);
+
+	snprintf(fctx->name, sizeof(fctx->name) - 1, "nouveau channel %i", fifo->chid);
+}
+
+struct nouveau_fence_work {
+	struct work_struct work;
+	struct fence_cb cb;
+	void (*func)(void *);
+	void *data;
+};
+
+static void
+nouveau_fence_work_handler(struct work_struct *kwork)
+{
+	struct nouveau_fence_work *work = container_of(kwork, typeof(*work), work);
+	work->func(work->data);
+	kfree(work);
+}
+
+static void nouveau_fence_work_cb(struct fence *fence, struct fence_cb *cb)
+{
+	struct nouveau_fence_work *work = container_of(cb, typeof(*work), cb);
+
+	schedule_work(&work->work);
+}
+
+/*
+ * In an ideal world, read would not assume the channel context is still alive.
+ * This function may be called from another device, running into free memory as a
+ * result. The drm node should still be there, so we can derive the index from
+ * the fence context.
+ */
+static bool nouveau_fence_is_signaled(struct fence *f)
+{
+	struct nouveau_fence *fence = container_of(f, struct nouveau_fence, base);
+	struct nouveau_channel *chan = fence->channel;
+	struct nouveau_fence_chan *fctx = chan->fence;
+
+	return (int)(fctx->read(chan) - fence->base.seqno) >= 0;
+}
+
+void
+nouveau_fence_work(struct nouveau_fence *fence,
+		   void (*func)(void *), void *data)
+{
+	struct nouveau_fence_work *work;
+
+	if (fence_is_signaled(&fence->base))
+		goto err;
+
+	work = kmalloc(sizeof(*work), GFP_KERNEL);
+	if (!work) {
+		WARN_ON(nouveau_fence_wait(fence, false, false));
+		goto err;
+	}
+
+	INIT_WORK(&work->work, nouveau_fence_work_handler);
+	work->func = func;
+	work->data = data;
+
+	if (fence_add_callback(&fence->base, &work->cb, nouveau_fence_work_cb) < 0)
+		goto err_free;
+	return;
+
+err_free:
+	kfree(work);
+err:
+	func(data);
+}
+
+static void
+nouveau_fence_update(struct nouveau_channel *chan)
+{
+	struct nouveau_fence_chan *fctx = chan->fence;
+	struct nouveau_fence *fence, *fnext;
+
+	u32 seq = fctx->read(chan);
+
+	list_for_each_entry_safe(fence, fnext, &fctx->pending, head) {
+		if ((int)(seq - fence->base.seqno) < 0)
+			break;
+
+		nouveau_fence_signal(fence);
+	}
+}
+
+int
+nouveau_fence_emit(struct nouveau_fence *fence, struct nouveau_channel *chan)
+{
+	struct nouveau_fence_chan *fctx = chan->fence;
+	struct nouveau_fifo *pfifo = nouveau_fifo(chan->drm->device);
+	struct nouveau_fifo_chan *fifo = (void*)chan->object;
+	struct nouveau_fence_priv *priv = (void*)chan->drm->fence;
+	int ret;
+
+	fence->channel  = chan;
+	fence->timeout  = jiffies + (15 * DRM_HZ);
+
+	if (priv->uevent)
+		__fence_init(&fence->base, &nouveau_fence_ops_uevent,
+			    &pfifo->uevent->list_lock,
+			    priv->context_base + fifo->chid, ++fctx->sequence);
+	else
+		__fence_init(&fence->base, &nouveau_fence_ops_legacy,
+			    &pfifo->uevent->list_lock,
+			    priv->context_base + fifo->chid, ++fctx->sequence);
+
+	trace_fence_emit(&fence->base);
+	ret = fctx->emit(fence);
+	if (!ret) {
+		fence_get(&fence->base);
+		spin_lock_irq(fctx->lock);
+		nouveau_fence_update(chan);
+		list_add_tail(&fence->head, &fctx->pending);
+		spin_unlock_irq(fctx->lock);
+	}
+
+	return ret;
+}
+
+bool
+nouveau_fence_done(struct nouveau_fence *fence)
+{
+	if (fence->base.ops == &nouveau_fence_ops_legacy ||
+	    fence->base.ops == &nouveau_fence_ops_uevent) {
+		struct nouveau_fence_chan *fctx;
+		unsigned long flags;
+
+		if (test_bit(FENCE_FLAG_SIGNALED_BIT, &fence->base.flags))
+			return true;
+
+		fctx = fence->channel->fence;
+		spin_lock_irqsave(fctx->lock, flags);
+		nouveau_fence_update(fence->channel);
+		spin_unlock_irqrestore(fctx->lock, flags);
+	}
+	return fence_is_signaled(&fence->base);
+}
+
+static long
+nouveau_fence_wait_legacy(struct fence *f, bool intr, long wait)
+{
+	struct nouveau_fence *fence = container_of(f, typeof(*fence), base);
+	unsigned long sleep_time = NSEC_PER_MSEC / 1000;
+	unsigned long t = jiffies, timeout = t + wait;
+
+	while (!nouveau_fence_done(fence)) {
+		ktime_t kt;
+
+		t = jiffies;
+
+		if (wait != MAX_SCHEDULE_TIMEOUT && time_after_eq(t, timeout)) {
+			__set_current_state(TASK_RUNNING);
+			return 0;
+		}
+
+		__set_current_state(intr ? TASK_INTERRUPTIBLE :
+					   TASK_UNINTERRUPTIBLE);
+
+		kt = ktime_set(0, sleep_time);
+		schedule_hrtimeout(&kt, HRTIMER_MODE_REL);
+		sleep_time *= 2;
+		if (sleep_time > NSEC_PER_MSEC)
+			sleep_time = NSEC_PER_MSEC;
+
+		if (intr && signal_pending(current))
+			return -ERESTARTSYS;
+	}
+
+	__set_current_state(TASK_RUNNING);
+
+	return timeout - t;
+}
+
+static int
+nouveau_fence_wait_busy(struct nouveau_fence *fence, bool intr)
+{
+	int ret = 0;
+
+	while (!nouveau_fence_done(fence)) {
+		if (time_after_eq(jiffies, fence->timeout)) {
+			ret = -EBUSY;
+			break;
+		}
+
+		__set_current_state(intr ?
+				    TASK_INTERRUPTIBLE :
+				    TASK_UNINTERRUPTIBLE);
+
+		if (intr && signal_pending(current)) {
+			ret = -ERESTARTSYS;
+			break;
+		}
+	}
+
+	__set_current_state(TASK_RUNNING);
+	return ret;
+}
+
+int
+nouveau_fence_wait(struct nouveau_fence *fence, bool lazy, bool intr)
+{
+	long ret;
+
+	if (!lazy)
+		return nouveau_fence_wait_busy(fence, intr);
+
+	ret = fence_wait_timeout(&fence->base, intr, 15 * DRM_HZ);
+	if (ret < 0)
+		return ret;
+	else if (!ret)
+		return -EBUSY;
+	else
+		return 0;
+}
+
+int
+nouveau_fence_sync(struct nouveau_bo *nvbo, struct nouveau_channel *chan)
+{
+	struct nouveau_fence_chan *fctx = chan->fence;
+	struct fence *fence = NULL;
+	int ret = 0, i;
+
+	fence = nvbo->bo.sync_obj;
+	if (fence && fence_is_signaled(fence)) {
+		nouveau_fence_unref((struct nouveau_fence **)
+				    &nvbo->bo.sync_obj);
+		fence = NULL;
+	}
+
+	if (fence) {
+		struct nouveau_fence *f = container_of(fence,
+						       struct nouveau_fence,
+						       base);
+		struct nouveau_channel *prev = f->channel;
+
+		if (prev != chan) {
+			ret = fctx->sync(f, prev, chan);
+			if (unlikely(ret))
+				ret = nouveau_fence_wait(f, true, true);
+		}
+	}
+
+	if (ret)
+		return ret;
+
+	lockdep_assert_held(&nvbo->bo.resv->lock.base);
+
+	fence = nvbo->bo.resv->fence_excl;
+	if (fence && !nouveau_local_fence(fence, chan->drm))
+		ret = fence_wait(fence, true);
+
+	for (i = 0; i < nvbo->bo.resv->fence_shared_count && !ret; ++i) {
+		fence = nvbo->bo.resv->fence_shared[i];
+
+		/* should always be true, for now */
+		if (!nouveau_local_fence(fence, chan->drm))
+			ret = fence_wait(fence, true);
+	}
+
+	return ret;
+}
+
+void
+nouveau_fence_unref(struct nouveau_fence **pfence)
+{
+	if (*pfence)
+		fence_put(&(*pfence)->base);
+	*pfence = NULL;
+}
+
+struct nouveau_fence *
+nouveau_fence_ref(struct nouveau_fence *fence)
+{
+	if (fence)
+		fence_get(&fence->base);
+	return fence;
+}
+
+int
+nouveau_fence_new(struct nouveau_channel *chan, bool sysmem,
+		  struct nouveau_fence **pfence)
+{
+	struct nouveau_fence *fence;
+	int ret = 0;
+
+	if (unlikely(!chan->fence))
+		return -ENODEV;
+
+	fence = kzalloc(sizeof(*fence), GFP_KERNEL);
+	if (!fence)
+		return -ENOMEM;
+
+	fence->sysmem = sysmem;
+
+	ret = nouveau_fence_emit(fence, chan);
+	if (ret)
+		nouveau_fence_unref(&fence);
+
+	*pfence = fence;
+	return ret;
+}
+
+
+static bool nouveau_fence_no_signaling(struct fence *f)
+{
+	/*
+	 * This needs uevents to work correctly, but fence_add_callback relies on
+	 * being able to enable signaling. It will still get signaled eventually,
+	 * just not right away.
+	 */
+	if (nouveau_fence_is_signaled(f))
+		return false;
+
+	return true;
+}
+
+static const char *nouveau_fence_get_get_driver_name(struct fence *fence)
+{
+	return "nouveau";
+}
+
+static const char *nouveau_fence_get_timeline_name(struct fence *f)
+{
+	struct nouveau_fence *fence =
+		container_of(f, struct nouveau_fence, base);
+	struct nouveau_fence_chan *fctx = fence->channel->fence;
+
+	return fctx ? fctx->name : "dead channel";
+}
+
+static const struct fence_ops nouveau_fence_ops_legacy = {
+	.get_driver_name = nouveau_fence_get_get_driver_name,
+	.get_timeline_name = nouveau_fence_get_timeline_name,
+	.enable_signaling = nouveau_fence_no_signaling,
+	.signaled = nouveau_fence_is_signaled,
+	.wait = nouveau_fence_wait_legacy,
+	.release = NULL
+};
+
+static int
+nouveau_fence_wait_uevent_handler(void *priv, int index)
+{
+	struct nouveau_fence *fence = priv;
+
+	if (nouveau_fence_is_signaled(&fence->base))
+		nouveau_fence_signal(fence);
+
+	/*
+	 * NVKM_EVENT_DROP is never appropriate here, nouveau_fence_signal
+	 * will unlink and free the event if needed.
+	 */
+	return NVKM_EVENT_KEEP;
+}
+
+static bool nouveau_fence_enable_signaling(struct fence *f)
+{
+	struct nouveau_fence *fence = container_of(f, struct nouveau_fence, base);
+	struct nouveau_event *event = container_of(f->lock, struct nouveau_event, list_lock);
+	struct nouveau_eventh *handler = &fence->event;
+
+	handler->event = event;
+	handler->func = nouveau_fence_wait_uevent_handler;
+	handler->priv = fence;
+
+	nouveau_event_get(handler);
+	if (nouveau_fence_is_signaled(f)) {
+		nouveau_event_put(handler);
+		return false;
+	}
+
+	list_add_tail(&handler->head, &event->index[0].list);
+
+	return true;
+}
+
+static const struct fence_ops nouveau_fence_ops_uevent = {
+	.get_driver_name = nouveau_fence_get_get_driver_name,
+	.get_timeline_name = nouveau_fence_get_timeline_name,
+	.enable_signaling = nouveau_fence_enable_signaling,
+	.signaled = nouveau_fence_is_signaled,
+	.wait = fence_default_wait,
+	.release = NULL
+};
