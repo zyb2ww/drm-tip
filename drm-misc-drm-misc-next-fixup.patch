@@ -1,0 +1,57 @@
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c b/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c
+index c18c81f63ac3..6078654d033b 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_kms.c
+@@ -2947,10 +2947,11 @@ vmw_kms_create_implicit_placement_property(struct vmw_private *dev_priv,
+  * the vmwgfx modesetting. So explicitly clear that member before calling
+  * into drm_atomic_helper_set_config.
+  */
+-int vmw_kms_set_config(struct drm_mode_set *set)
++int vmw_kms_set_config(struct drm_mode_set *set,
++		       struct drm_modeset_acquire_ctx *ctx)
+ {
+ 	if (set && set->mode)
+ 		set->mode->type = 0;
+ 
+-	return drm_atomic_helper_set_config(set);
++	return drm_atomic_helper_set_config(set, ctx);
+ }
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_kms.h b/drivers/gpu/drm/vmwgfx/vmwgfx_kms.h
+index 9c161d29aaeb..0c226b2adea5 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_kms.h
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_kms.h
+@@ -453,6 +453,7 @@ int vmw_kms_stdu_dma(struct vmw_private *dev_priv,
+ 		     bool to_surface,
+ 		     bool interruptible);
+ 
+-int vmw_kms_set_config(struct drm_mode_set *set);
++int vmw_kms_set_config(struct drm_mode_set *set,
++		       struct drm_modeset_acquire_ctx *ctx);
+ 
+ #endif
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c b/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c
+index 02b8f2541dca..8d7dc9def7c2 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_scrn.c
+@@ -324,7 +324,7 @@ static int vmw_sou_crtc_page_flip(struct drm_crtc *crtc,
+ 		return -EINVAL;
+ 
+ 	flags &= ~DRM_MODE_PAGE_FLIP_ASYNC;
+-	ret = drm_atomic_helper_page_flip(crtc, new_fb, NULL, flags);
++	ret = drm_atomic_helper_page_flip(crtc, new_fb, NULL, flags, ctx);
+ 	if (ret) {
+ 		DRM_ERROR("Page flip error %d.\n", ret);
+ 		return ret;
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c b/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
+index e59bbcd8b226..bad31bdf09b6 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c
+@@ -505,7 +505,7 @@ static int vmw_stdu_crtc_page_flip(struct drm_crtc *crtc,
+ 	 * don't hand it to the helper.
+ 	 */
+ 	flags &= ~DRM_MODE_PAGE_FLIP_ASYNC;
+-	ret = drm_atomic_helper_page_flip(crtc, new_fb, NULL, flags);
++	ret = drm_atomic_helper_page_flip(crtc, new_fb, NULL, flags, ctx);
+ 	if (ret) {
+ 		DRM_ERROR("Page flip error %d.\n", ret);
+ 		return ret;
