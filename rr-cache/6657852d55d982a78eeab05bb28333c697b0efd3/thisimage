@@ -37,7 +37,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
 #include <linux/backlight.h>
-#include <linux/hashtable.h>
+#include <linux/hash.h>
 #include <linux/intel-iommu.h>
 #include <linux/kref.h>
 #include <linux/pm_qos.h>
@@ -1453,6 +1453,13 @@ struct i915_gem_mm {
 
 	/** LRU list of objects with fence regs on them. */
 	struct list_head fence_list;
+
+	/**
+	 * Workqueue to fault in userptr pages, flushed by the execbuf
+	 * when required but otherwise left to userspace to try again
+	 * on EAGAIN.
+	 */
+	struct workqueue_struct *userptr_wq;
 
 	u64 unordered_timeline;
 
@@ -3240,7 +3247,8 @@ int i915_gem_set_tiling_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv);
 int i915_gem_get_tiling_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv);
-void i915_gem_init_userptr(struct drm_i915_private *dev_priv);
+int i915_gem_init_userptr(struct drm_i915_private *dev_priv);
+void i915_gem_cleanup_userptr(struct drm_i915_private *dev_priv);
 int i915_gem_userptr_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *file);
 int i915_gem_get_aperture_ioctl(struct drm_device *dev, void *data,
@@ -3593,7 +3601,7 @@ int __must_check i915_gem_evict_something(struct i915_address_space *vm,
 int __must_check i915_gem_evict_for_node(struct i915_address_space *vm,
 					 struct drm_mm_node *node,
 					 unsigned int flags);
-int i915_gem_evict_vm(struct i915_address_space *vm, bool do_idle);
+int i915_gem_evict_vm(struct i915_address_space *vm);
 
 /* belongs in i915_gem_gtt.h */
 static inline void i915_gem_chipset_flush(struct drm_i915_private *dev_priv)
