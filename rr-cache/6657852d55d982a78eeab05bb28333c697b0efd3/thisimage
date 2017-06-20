@@ -2236,13 +2236,6 @@ struct drm_i915_private {
 	DECLARE_HASHTABLE(mm_structs, 7);
 	struct mutex mm_lock;
 
-	/* The hw wants to have a stable context identifier for the lifetime
-	 * of the context (for OA, PASID, faults, etc). This is limited
-	 * in execlists to 21 bits.
-	 */
-	struct ida context_hw_ida;
-#define MAX_CONTEXT_HW_ID (1<<21) /* exclusive */
-
 	/* Kernel Modesetting */
 
 	struct intel_crtc *plane_to_crtc_mapping[I915_MAX_PIPES];
@@ -2321,7 +2314,18 @@ struct drm_i915_private {
 	 */
 	struct mutex av_mutex;
 
-	struct list_head context_list;
+	struct {
+		struct list_head list;
+		struct llist_head free_list;
+		struct work_struct free_work;
+
+		/* The hw wants to have a stable context identifier for the
+		 * lifetime of the context (for OA, PASID, faults, etc).
+		 * This is limited in execlists to 21 bits.
+		 */
+		struct ida hw_ida;
+#define MAX_CONTEXT_HW_ID (1<<21) /* exclusive */
+	} contexts;
 
 	u32 fdi_rx_config;
 
@@ -3510,7 +3514,7 @@ i915_gem_object_pin_to_display_plane(struct drm_i915_gem_object *obj,
 void i915_gem_object_unpin_from_display_plane(struct i915_vma *vma);
 int i915_gem_object_attach_phys(struct drm_i915_gem_object *obj,
 				int align);
-int i915_gem_open(struct drm_device *dev, struct drm_file *file);
+int i915_gem_open(struct drm_i915_private *i915, struct drm_file *file);
 void i915_gem_release(struct drm_device *dev, struct drm_file *file);
 
 int i915_gem_object_set_cache_level(struct drm_i915_gem_object *obj,
@@ -3542,38 +3546,23 @@ void i915_gem_object_save_bit_17_swizzle(struct drm_i915_gem_object *obj,
 					 struct sg_table *pages);
 
 static inline struct i915_gem_context *
+__i915_gem_context_lookup_rcu(struct drm_i915_file_private *file_priv, u32 id)
+{
+	return idr_find(&file_priv->context_idr, id);
+}
+
+static inline struct i915_gem_context *
 i915_gem_context_lookup(struct drm_i915_file_private *file_priv, u32 id)
 {
 	struct i915_gem_context *ctx;
 
-	lockdep_assert_held(&file_priv->dev_priv->drm.struct_mutex);
-
-	ctx = idr_find(&file_priv->context_idr, id);
-	if (!ctx)
-		return ERR_PTR(-ENOENT);
+	rcu_read_lock();
+	ctx = __i915_gem_context_lookup_rcu(file_priv, id);
+	if (ctx && !kref_get_unless_zero(&ctx->ref))
+		ctx = NULL;
+	rcu_read_unlock();
 
 	return ctx;
-}
-
-static inline struct i915_gem_context *
-i915_gem_context_get(struct i915_gem_context *ctx)
-{
-	kref_get(&ctx->ref);
-	return ctx;
-}
-
-static inline void i915_gem_context_put(struct i915_gem_context *ctx)
-{
-	lockdep_assert_held(&ctx->i915->drm.struct_mutex);
-	kref_put(&ctx->ref, i915_gem_context_free);
-}
-
-static inline void i915_gem_context_put_unlocked(struct i915_gem_context *ctx)
-{
-	struct mutex *lock = &ctx->i915->drm.struct_mutex;
-
-	if (kref_put_mutex(&ctx->ref, i915_gem_context_free, lock))
-		mutex_unlock(lock);
 }
 
 static inline struct intel_timeline *
