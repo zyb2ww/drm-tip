@@ -2794,6 +2794,7 @@ CONFIG_DRM_PANEL=y
 # Display Panels
 #
 CONFIG_DRM_BRIDGE=y
+CONFIG_DRM_PANEL_BRIDGE=y
 
 #
 # Display Interface Bridges
