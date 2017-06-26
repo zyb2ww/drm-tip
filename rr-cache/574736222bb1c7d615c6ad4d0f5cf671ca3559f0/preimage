@@ -778,6 +778,8 @@ static void execlists_schedule(struct drm_i915_gem_request *request, int prio)
 		}
 
 		list_safe_reset_next(dep, p, dfs_link);
+<<<<<<<
+=======
 	}
 
 	/* If we didn't need to bump any existing priorities, and we haven't
@@ -791,6 +793,7 @@ static void execlists_schedule(struct drm_i915_gem_request *request, int prio)
 		if (stack.dfs_link.next == stack.dfs_link.prev)
 			return;
 		__list_del_entry(&stack.dfs_link);
+>>>>>>>
 	}
 
 	engine = request->engine;
@@ -808,9 +811,16 @@ static void execlists_schedule(struct drm_i915_gem_request *request, int prio)
 			continue;
 
 		pt->priority = prio;
+<<<<<<<
+		if (!RB_EMPTY_NODE(&pt->node)) {
+			rb_erase(&pt->node, &engine->execlist_queue);
+			if (insert_request(pt, &engine->execlist_queue))
+				engine->execlist_first = &pt->node;
+=======
 		if (!list_empty(&pt->link)) {
 			__list_del_entry(&pt->link);
 			insert_request(engine, pt, prio);
+>>>>>>>
 		}
 	}
 
@@ -1352,10 +1362,7 @@ static void reset_common_ring(struct intel_engine_cs *engine,
 	request->tail =
 		intel_ring_wrap(request->ring,
 				request->wa_tail - WA_TAIL_DWORDS*sizeof(u32));
-<<<<<<<
-=======
 	assert_ring_tail_valid(request->ring, request->tail);
->>>>>>>
 }
 
 static int intel_logical_ring_emit_pdps(struct drm_i915_gem_request *req)
