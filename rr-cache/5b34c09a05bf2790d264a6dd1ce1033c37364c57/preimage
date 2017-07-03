@@ -675,16 +675,17 @@ static int eb_select_context(struct i915_execbuffer *eb)
 	struct i915_gem_context *ctx;
 
 	ctx = i915_gem_context_lookup(eb->file->driver_priv, eb->args->rsvd1);
-	if (unlikely(IS_ERR(ctx)))
-		return PTR_ERR(ctx);
+	if (unlikely(!ctx))
+		return -ENOENT;
 
 	if (unlikely(i915_gem_context_is_banned(ctx))) {
 		DRM_DEBUG("Context %u tried to submit while banned\n",
 			  ctx->user_handle);
+		i915_gem_context_put(ctx);
 		return -EIO;
 	}
 
-	eb->ctx = i915_gem_context_get(ctx);
+	eb->ctx = ctx;
 	eb->vm = ctx->ppgtt ? &ctx->ppgtt->base : &eb->i915->ggtt.base;
 
 	eb->context_flags = 0;
@@ -1345,21 +1346,6 @@ out:
 	return target->node.start | UPDATE;
 }
 
-<<<<<<<
-static int
-i915_gem_execbuffer_relocate_entry(struct i915_vma *vma,
-				   struct eb_vmas *eb,
-				   struct drm_i915_gem_relocation_entry *reloc,
-				   struct reloc_cache *cache)
-{
-	struct drm_i915_gem_object *obj = vma->obj;
-	struct drm_i915_private *dev_priv = to_i915(obj->base.dev);
-	struct drm_gem_object *target_obj;
-	struct drm_i915_gem_object *target_i915_obj;
-	struct i915_vma *target_vma;
-	uint64_t target_offset;
-	int ret;
-=======
 static u64
 eb_relocate_entry(struct i915_execbuffer *eb,
 		  struct i915_vma *vma,
@@ -1367,7 +1353,6 @@ eb_relocate_entry(struct i915_execbuffer *eb,
 {
 	struct i915_vma *target;
 	int err;
->>>>>>>
 
 	/* we've already hold a reference to all valid objects */
 	target = eb_get_vma(eb, reloc->target_handle);
@@ -1451,13 +1436,6 @@ eb_relocate_entry(struct i915_execbuffer *eb,
 	 * of our synchronisation.
 	 */
 	vma->exec_entry->flags &= ~EXEC_OBJECT_ASYNC;
-<<<<<<<
-=======
-
-	ret = relocate_entry(obj, reloc, cache, target_offset);
-	if (ret)
-		return ret;
->>>>>>>
 
 	/* and update the user's relocation entry */
 	return relocate_entry(vma, reloc, eb, target);
@@ -1510,14 +1488,9 @@ static int eb_relocate_vma(struct i915_execbuffer *eb, struct i915_vma *vma)
 		do {
 			u64 offset = eb_relocate_entry(eb, vma, r);
 
-<<<<<<<
 			if (likely(offset == 0)) {
 			} else if ((s64)offset < 0) {
 				remain = (int)offset;
-=======
-			ret = i915_gem_execbuffer_relocate_entry(vma, eb, r, &cache);
-			if (ret)
->>>>>>>
 				goto out;
 			} else {
 				/*
@@ -1563,24 +1536,7 @@ eb_relocate_vma_slow(struct i915_execbuffer *eb, struct i915_vma *vma)
 	int err;
 
 	for (i = 0; i < entry->relocation_count; i++) {
-<<<<<<<
-		ret = i915_gem_execbuffer_relocate_entry(vma, eb, &relocs[i], &cache);
-		if (ret)
-			break;
-	}
-	reloc_cache_fini(&cache);
-
-	return ret;
-}
-
-static int
-i915_gem_execbuffer_relocate(struct eb_vmas *eb)
-{
-	struct i915_vma *vma;
-	int ret = 0;
-=======
 		u64 offset = eb_relocate_entry(eb, vma, &relocs[i]);
->>>>>>>
 
 		if ((s64)offset < 0) {
 			err = (int)offset;
@@ -2179,7 +2135,6 @@ i915_gem_do_execbuffer(struct drm_device *dev,
 	if (DBG_FORCE_RELOC || !(args->flags & I915_EXEC_NO_RELOC))
 		args->flags |= __EXEC_HAS_RELOC;
 	eb.exec = exec;
-	eb.ctx = NULL;
 	eb.invalid_flags = __EXEC_OBJECT_UNKNOWN_FLAGS;
 	if (USES_FULL_PPGTT(eb.i915))
 		eb.invalid_flags |= EXEC_OBJECT_NEEDS_GTT;
@@ -2236,6 +2191,13 @@ i915_gem_do_execbuffer(struct drm_device *dev,
 		goto err_out_fence;
 
 	GEM_BUG_ON(!eb.lut_size);
+<<<<<<<
+=======
+
+	err = eb_select_context(&eb);
+	if (unlikely(err))
+		goto err_destroy;
+>>>>>>>
 
 	/*
 	 * Take a local wakeref for preparing to dispatch the execbuf as
@@ -2245,13 +2207,10 @@ i915_gem_do_execbuffer(struct drm_device *dev,
 	 * 100ms.
 	 */
 	intel_runtime_pm_get(eb.i915);
+
 	err = i915_mutex_lock_interruptible(dev);
 	if (err)
 		goto err_rpm;
-
-	err = eb_select_context(&eb);
-	if (unlikely(err))
-		goto err_unlock;
 
 	err = eb_relocate(&eb);
 	if (err)
@@ -2388,11 +2347,11 @@ err_batch_unpin:
 err_vma:
 	if (eb.exec)
 		eb_release_vmas(&eb);
-	i915_gem_context_put(eb.ctx);
-err_unlock:
 	mutex_unlock(&dev->struct_mutex);
 err_rpm:
 	intel_runtime_pm_put(eb.i915);
+	i915_gem_context_put(eb.ctx);
+err_destroy:
 	eb_destroy(&eb);
 err_out_fence:
 	if (out_fence_fd != -1)
