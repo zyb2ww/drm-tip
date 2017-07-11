@@ -1,0 +1,47 @@
+<<<<<<<
+drm-intel drm-intel-fixes 69973b830859bc6529a7a0468ba0d80ee5117826
+	Linux 4.9
+drm-upstream drm-fixes 4e4f3e984954143fb0b8e5035df7ff22dd07bb6a
+	Merge branch 'drm-fixes-4.9' of git://people.freedesktop.org/~agd5f/linux into drm-fixes
+drm-intel drm-intel-next-fixes 6ba0566cf2afcdb17bff882e3a95cbbcb22c4a83
+	drm/i915: skip the first 4k of stolen memory on everything >= gen8
+drm-intel drm-intel-next-queued eb6f771b498956aa03170586a94f9f8bf2cc41d3
+	drm/i915: Remove useless VLV_FEATURE Macro.
+drm-upstream drm-next 2cf026ae85c42f253feb9f420d1b4bc99bd5503d
+	Merge branch 'linux-4.10' of git://github.com/skeggsb/linux into drm-next
+sound-upstream for-next 995c6a7fd9b9212abdf01160f6ce3193176be503
+	ALSA: hiface: Fix M2Tech hiFace driver sampling rate change
+sound-upstream for-linus 995c6a7fd9b9212abdf01160f6ce3193176be503
+	ALSA: hiface: Fix M2Tech hiFace driver sampling rate change
+drm-intel topic/core-for-CI 4e4bc4951e563618e62a0e8a7a2e794679e30908
+	mm/vmalloc: Replace opencoded 4-level page walkers
+drm-misc drm-misc-next f79f26921ee12c6fc14d0df61b1eb27a5070b959
+	drm/i915: Add a cursor hack to allow converting legacy page flip to atomic, v3.
+drm-misc drm-misc-next-fixes 6449b088dd51dd5aa6b38455888bbf538d21f2fc
+	drm: Add fake controlD* symlinks for backwards compat
+drm-misc drm-misc-fixes 298360af3dab45659810fdc51aba0c9f4097e4f6
+	drivers/gpu/drm/ast: Fix infinite loop if read fails
+=======
+drm-intel drm-intel-fixes ade4d4410f8b8816a8e9d85bfdb4bdcc9464065a
+	Merge tag 'gvt-fixes-2016-12-26' of https://github.com/01org/gvt-linux into drm-intel-fixes
+drm-upstream drm-fixes 4a401ceeef7bf3bc55f5e913cbf19d6038cf83c6
+	Merge tag 'drm-intel-next-fixes-2016-12-22' of git://anongit.freedesktop.org/git/drm-intel into drm-fixes
+drm-intel drm-intel-next-fixes 6ba0566cf2afcdb17bff882e3a95cbbcb22c4a83
+	drm/i915: skip the first 4k of stolen memory on everything >= gen8
+drm-intel drm-intel-next-queued fe88d122e6aeb86b3bffc76a997ce439cb6f031a
+	drm/i915: Drop kerneldoc markup from non-kerneldoc enum drrs_refresh_rate_type
+drm-upstream drm-next 2cf026ae85c42f253feb9f420d1b4bc99bd5503d
+	Merge branch 'linux-4.10' of git://github.com/skeggsb/linux into drm-next
+sound-upstream for-next 823ff161fe51179cc9ad1a3f6c7e4532901e0444
+	ALSA: hda - Fix click noises on Samsung Ativ Book 8
+sound-upstream for-linus 2d706e790f0508dff4fb72eca9b4892b79757feb
+	Merge branch 'linus' of git://git.kernel.org/pub/scm/linux/kernel/git/herbert/crypto-2.6
+drm-intel topic/core-for-CI 862847fa9da07e06eeee1b6075c9767f84b98309
+	mm/vmalloc: Replace opencoded 4-level page walkers
+drm-misc drm-misc-next 4541d31e2ab547fa0eea8ce22d3593d0f4cce1fd
+	drm/bridge: Use recommened kerneldoc for struct member refs
+drm-misc drm-misc-next-fixes 6449b088dd51dd5aa6b38455888bbf538d21f2fc
+	drm: Add fake controlD* symlinks for backwards compat
+drm-misc drm-misc-fixes 7ce7d89f48834cefece7804d38fc5d85382edf77
+	Linux 4.10-rc1
+>>>>>>>
