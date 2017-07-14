@@ -1,0 +1,39 @@
+<<<<<<<
+origin/drm-intel-fixes ea54ff4008892b46c7a3e6bc8ab8aaec9d198639
+	drm/i915: Ignore OpRegion panel type except on select machines
+=======
+origin/drm-intel-fixes fc2780b66b15092ac68272644a522c1624c48547
+	drm/i915: Add GEN7_PCODE_MIN_FREQ_TABLE_GT_RATIO_OUT_OF_RANGE to SNB
+>>>>>>>
+drm-upstream/drm-fixes 7eebfba5c48f89e1729022459cde2b256696ba2a
+	Merge tag 'drm/atmel-hlcdc/4.8-fixes' of github.com:bbrezillon/linux-at91 into drm-fixes
+origin/drm-intel-next-fixes c45eb4fed12d278d3619f1904885bd0d7bcbf036
+	drm/i915/fbdev: Check for the framebuffer before use
+<<<<<<<
+origin/drm-intel-next-queued 40918e0bb81be02f507a941f8b2741f0dc1771b0
+	Revert "drm/i915/psr: Make idle_frames sensible again"
+drm-upstream/drm-next 8506912b969b60aacc733315eeeb46b014d920a4
+	Merge branch 'drm-tda998x-devel' of git://git.armlinux.org.uk/~rmk/linux-arm into drm-next
+sound-upstream/for-next 071f1344f47946dfcb511bf0fbc998dd9a83be29
+	ALSA: pci: constify local structures
+=======
+origin/drm-intel-next-queued 7a9347f947757f6c5ea432b299a8ba33ef7b78c7
+	drm/i915/guc: general tidying up (submission)
+drm-upstream/drm-next 8506912b969b60aacc733315eeeb46b014d920a4
+	Merge branch 'drm-tda998x-devel' of git://git.armlinux.org.uk/~rmk/linux-arm into drm-next
+sound-upstream/for-next 46e860f76804f86ac6062e9bb0d6dbea47f23899
+	ALSA: rename TLV-related macros so that they're friendly to user applications
+>>>>>>>
+sound-upstream/for-linus 3f640970a41429f0a076c01270bbd014c9eae61c
+	ALSA: hda - Fix headset mic detection problem for several Dell laptops
+origin/topic/drm-fixes c6935931c1894ff857616ff8549b61236a19148f
+	Linux 4.8-rc5
+<<<<<<<
+origin/topic/drm-misc ecebca79f6976ddaddfd054d699272515869ea28
+	dma-buf/sync-file: Avoid enable fence signaling if poll(.timeout=0)
+=======
+origin/topic/drm-misc f6ce410a59a48aff47bb7e18ab40497e4e80d275
+	drm/fence: allow fence waiting to be interrupted by userspace
+>>>>>>>
+origin/topic/core-for-CI d0245f6bbeb63fcc07974be1ffbb8ba7b2e6ae13
+	locking/mutex: Prevent lock starvation when spinning is disabled
