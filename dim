@@ -542,10 +542,10 @@ function commit_rerere_cache
 		git add ./*.patch >& /dev/null || true
 		for file  in $(git ls-files); do
 			if ! git log --since="60 days ago" --name-only -- $file | grep $file &> /dev/null; then
-				git rm $file &> /dev/null
+				git rm $file &> /dev/null || true
 			fi
 		done
-		find rr-cache/ -mtime -1 -type f -not -name "thisimage*" -print0 | xargs -0 git add > /dev/null
+		find rr-cache/ -mtime -1 -type f -not -name "thisimage*" -print0 | xargs -0 git add > /dev/null || true
 		git rm rr-cache/rr-cache &> /dev/null || true
 		if git commit -m "$time: $integration_branch rerere cache update" >& /dev/null; then
 			echo -n "New commit. "
