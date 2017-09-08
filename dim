@@ -1554,12 +1554,7 @@ function dim_update_next_continue
 	else
 		echo "*** CHANGELOG OVERVIEW HERE ***" >> $req_file
 	fi
-	cat >> $req_file <<-HERE
-
-		Happy testing!
-
-		Cheers, Daniel
-		HERE
+	prep_pull_mail_signature >> $req_file
 
 	$DRY $DIM_MUA -s "Updated drm-intel-testing" \
 	     -i $req_file \
