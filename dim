@@ -1395,11 +1395,6 @@ function prep_pull_mail_greetings
 {
 	if [ -r $DIM_TEMPLATE_HELLO ]; then
 		cat $DIM_TEMPLATE_HELLO
-	else
-		cat <<-EOF
-		Hi Dave,
-
-		EOF
 	fi
 }
 
@@ -1407,13 +1402,6 @@ function prep_pull_mail_signature
 {
 	if [ -r $DIM_TEMPLATE_SIGNATURE ]; then
 		cat $DIM_TEMPLATE_SIGNATURE
-	else
-		cat <<-EOF
-
-		Cheers, Daniel
-
-
-		EOF
 	fi
 }
 
