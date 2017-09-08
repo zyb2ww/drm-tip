@@ -83,13 +83,27 @@ drm_tip_ssh=ssh://git.freedesktop.org/git/drm-tip
 drm_upstream_git=git://people.freedesktop.org/~airlied/linux
 linux_upstream_git=git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 
-# email aliases
-addr_drm_maintainer="Dave Airlie <airlied@gmail.com>"
-addr_intel_gfx_maintainer1="Daniel Vetter <daniel.vetter@ffwll.ch>"
-addr_intel_gfx_maintainer2="Jani Nikula <jani.nikula@linux.intel.com>"
-addr_intel_gfx="intel-gfx@lists.freedesktop.org"
-addr_dri_devel="dri-devel@lists.freedesktop.org"
-addr_intel_qa="\"Jari Tahvanainen\" <jari.tahvanainen@intel.com>"
+# Recipients for all dim based pull requests.
+# Add To: lines to the end, Cc: lines in the beginning with -c.
+pull_request_recipients=(
+	-c "Daniel Vetter <daniel.vetter@ffwll.ch>"
+	-c "Jani Nikula <jani.nikula@linux.intel.com>"
+	-c "Joonas Lahtinen <joonas.lahtinen@linux.intel.com>"
+	-c "Rodrigo Vivi <rodrigo.vivi@intel.com>"
+	-c "Sean Paul <seanpaul@chromium.org>"
+	-c "dri-devel@lists.freedesktop.org"
+	-c "intel-gfx@lists.freedesktop.org"
+	"Dave Airlie <airlied@gmail.com>"
+)
+
+# Recipients for drm-intel-testing updates.
+test_request_recipients=(
+	-c "Jani Nikula <jani.nikula@linux.intel.com>"
+	-c "Joonas Lahtinen <joonas.lahtinen@linux.intel.com>"
+	-c "Rodrigo Vivi <rodrigo.vivi@intel.com>"
+	-c "intel-gfx@lists.freedesktop.org"
+	"Jari Tahvanainen <jari.tahvanainen@intel.com>"
+)
 
 # integration configuration
 integration_config=nightly.conf
@@ -1557,11 +1571,7 @@ function dim_update_next_continue
 	prep_pull_mail_signature >> $req_file
 
 	$DRY $DIM_MUA -s "Updated drm-intel-testing" \
-	     -i $req_file \
-	     -c "$addr_intel_gfx" \
-	     -c "$addr_intel_gfx_maintainer1" \
-	     -c "$addr_intel_gfx_maintainer2" \
-	     "$addr_intel_qa"
+	     -i $req_file "${test_request_recipients[@]}"
 }
 
 function dim_tag_next
@@ -1652,12 +1662,7 @@ function dim_pull_request
 
 	git request-pull $upstream $git_url $tag >> $req_file
 	$DRY $DIM_MUA -s "[PULL] $branch" \
-		-i $req_file \
-		-c "$addr_intel_gfx" \
-		-c "$addr_dri_devel" \
-		-c "$addr_intel_gfx_maintainer1" \
-		-c "$addr_intel_gfx_maintainer2" \
-		"$addr_drm_maintainer"
+	     -i $req_file "${pull_request_recipients[@]}"
 }
 
 function dim_pull_request_next
