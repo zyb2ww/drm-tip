@@ -887,9 +887,7 @@ function dim_backmerge
 	cat > $patch_file <<-HERE
 		Merge $upstream into $branch
 
-		<Explain here why you've done the backmerge, e.g. which patches
-		 or which driver pull request you need to be able to merge
-		 \$feature_work from \$author.>
+		*** DETAILED BACKMERGE RATIONALE HERE ***
 
 		HERE
 
@@ -1426,7 +1424,7 @@ function prep_pull_mail_overview
 	local obj
 
 	if [ "$#" = "0" ]; then
-		echo "*** insert pull request overview here ***"
+		echo "*** PULL REQUEST OVERVIEW HERE ***"
 	else
 		for tag in "$@"; do
 			obj=$(git rev-parse $tag)
@@ -1566,7 +1564,7 @@ function dim_update_next_continue
 	if [[ "$(git cat-file -t $obj)" == "tag" ]] ; then
 		git cat-file -p $obj | tail -n+6 >> $req_file
 	else
-		echo "<tag doesn't contain a changelog overview, fix this>" >> $req_file
+		echo "*** CHANGELOG OVERVIEW HERE ***" >> $req_file
 	fi
 	cat >> $req_file <<-HERE
 
