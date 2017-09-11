@@ -1635,7 +1635,7 @@ function dim_tag_next
 			tag="drm-intel-next-$today-$((++suffix))"
 		done
 
-		$DRY git tag $tag $DIM_DRM_INTEL_REMOTE/drm-intel-next
+		$DRY git tag -a $tag $DIM_DRM_INTEL_REMOTE/drm-intel-next
 		git push $DRY_RUN $DIM_DRM_INTEL_REMOTE $tag
 	else
 		echo "drm-intel-next not up-to-date, aborting"
