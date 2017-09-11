@@ -349,6 +349,8 @@ recipients already set.
 Since the tag for the *branch* is date based, the pull request can be
 regenerated with the same commands if something goes wrong.
 
+The tag will be signed using the key specified by \$DIM_GPG_KEYID, if set.
+
 pull-request-fixes [*upstream*]
 -------------------------------
 **pull-request** shorthand for *drm-intel-fixes* as the branch and
@@ -391,6 +393,8 @@ opened.
 Also checks that the drm-intel-fixes|-next-queued are fully
 merged into drm-tip to avoid operator error.
 
+The tag will be signed using the key specified by \$DIM_GPG_KEYID, if set.
+
 update-next-continue
 --------------------
 
@@ -404,6 +408,8 @@ Pushes a new tag for the current drm-intel-next state after checking that the
 remote is up-to-date. Useful if drm-intel-next has been changed since the last
 run of the update-next command (e.g. to apply a hotfix before sending out the
 pull request).
+
+The tag will be signed using the key specified by \$DIM_GPG_KEYID, if set.
 
 DIM HELP COMMANDS
 =================
@@ -497,6 +503,11 @@ Path to a file containing a signature template for pull request mails.
 DIM_TEMPLATE_TAG_SUMMARY
 -------------------------
 Path to a file containing the template for dim pull-request tag summaries.
+
+DIM_GPG_KEYID
+-------------
+GPG key ID to use for signing tags. If set, tags will be signed. If unset, the
+default, tags will not be signed.
 
 dim_alias_<alias>
 -----------------

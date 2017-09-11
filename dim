@@ -70,6 +70,9 @@ DIM_TEMPLATE_SIGNATURE=${DIM_TEMPLATE_SIGNATURE:-$HOME/.dim.template.signature}
 # dim pull-request tag summary template
 DIM_TEMPLATE_TAG_SUMMARY=${DIM_TEMPLATE_TAG_SUMMARY:-$HOME/.dim.template.tagsummary}
 
+# GPG key id for signing tags. If unset, don't sign.
+DIM_GPG_KEYID=${DIM_GPG_KEYID:+-u $DIM_GPG_KEYID}
+
 #
 # Internal configuration.
 #
@@ -1597,7 +1600,7 @@ function dim_update_next_continue
 		tag_testing="drm-intel-testing-$today-$((++suffix))"
 	done
 
-	$DRY git tag -a $tag $DIM_DRM_INTEL_REMOTE/drm-intel-next
+	$DRY git tag -a $DIM_GPG_KEYID $tag $DIM_DRM_INTEL_REMOTE/drm-intel-next
 	git push $DRY_RUN $DIM_DRM_INTEL_REMOTE $tag
 
 	echo "Updating drm-intel-testing to latest drm-tip"
@@ -1635,7 +1638,7 @@ function dim_tag_next
 			tag="drm-intel-next-$today-$((++suffix))"
 		done
 
-		$DRY git tag -a $tag $DIM_DRM_INTEL_REMOTE/drm-intel-next
+		$DRY git tag -a $DIM_GPG_KEYID $tag $DIM_DRM_INTEL_REMOTE/drm-intel-next
 		git push $DRY_RUN $DIM_DRM_INTEL_REMOTE $tag
 	else
 		echo "drm-intel-next not up-to-date, aborting"
@@ -1696,7 +1699,7 @@ function dim_pull_request
 		done
 		gitk "$branch@{upstream}" ^$upstream &
 		prep_pull_tag_summary | $DRY git tag -F- $tag "$branch@{upstream}"
-		$DRY git tag -a -f $tag
+		$DRY git tag -a $DIM_GPG_KEYID -f $tag
 		$DRY git push $remote $tag
 		prep_pull_mail $req_file $tag
 
