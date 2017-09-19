@@ -689,7 +689,7 @@ function checkpatch_commit_push
 	sha1=$1
 
 	# use real names for people with many different email addresses
-	author=$(git show -s $sha1 --format="format:%an")
+	author=$(git show -s $sha1 --format="format:%ae")
 	committer=$(git show -s $sha1 --format="format:%cn")
 
 	# check for author sign-off
