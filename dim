@@ -698,11 +698,13 @@ function checkpatch_commit_push
 	sha1=$1
 
 	# use real names for people with many different email addresses
-	author=$(git show -s $sha1 --format="format:%ae")
+	author=$(git show -s $sha1 --format="format:%an")
 	committer=$(git show -s $sha1 --format="format:%cn")
+	# outlook mangles mails into "Last, First"
+	author_outlook=$(git show -s $sha1 --format="format:%an" | sed -e 's/\([^ ]*\) \(.*\)/\2, \1/')
 
 	# check for author sign-off
-	if ! git show -s $sha1 | grep -qi "S.*-by:.*$author"  ; then
+	if ! git show -s $sha1 | grep -qi "S.*-by:.*\\($author\\|$author_outlook\\)" ; then
 		warn_or_fail "$sha1 is lacking author of sign-off"
 	fi
 
