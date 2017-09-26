@@ -118,6 +118,14 @@ function read_integration_config
 	if [ -r $DIM_PREFIX/drm-rerere/$integration_config ]; then
 		# shellcheck source=/dev/null
 		source $DIM_PREFIX/drm-rerere/$integration_config
+
+		if [[ "${#drm_tip_repos[@]}" = "0" ]] || [[ "${#drm_tip_config[@]}" = "0" ]]; then
+			echoerr "$integration_config not set up correctly, please fix manually"
+			exit 1
+		fi
+	else
+		echoerr "$integration_config is missing, please check your configuration and/or run dim setup"
+		exit 1
 	fi
 
 	dim_branches=
@@ -129,7 +137,6 @@ function read_integration_config
 		fi
 	done
 }
-read_integration_config
 
 function echoerr
 {
@@ -220,6 +227,8 @@ if [ "$subcommand" != "setup" ] && [ "$subcommand" != "help" ] && [ "$subcommand
 			exit 1
 		fi
 	done
+
+	read_integration_config
 fi
 
 #
