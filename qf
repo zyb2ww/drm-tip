@@ -300,7 +300,7 @@ function qf_clean_patches
 	cd_toplevel
 	repo_check 0
 
-	for patch in patches/*.patch ; do
+	for patch in patches/{*/,/}*.patch ; do
 		if grep "^${patch##patches/}$" patches/series &> /dev/null ; then
 			continue
 		fi
@@ -486,7 +486,7 @@ function qf_list_unused_patches
 	cd_toplevel
 	repo_check 1
 
-	for patch in patches/*.patch ; do
+	for patch in patches/{*/,/}*.patch ; do
 		if ! grep "^${patch#patches/}$" patches/series > /dev/null ; then
 			if [[ "$1" != --purge ]] ; then
 				echo $patch
