@@ -271,10 +271,17 @@ function url_to_remote # url
 
 		if [[ -z "$remote" ]]; then
 			echoerr "No git remote for url $url or $git_url found in $(pwd)"
-			echoerr "Please set it up using:"
-			echoerr "    $ git remote add <name> $url"
-			echoerr "with a name of your choice."
-			return 1
+			remote=${url%.git}
+			remote=${remote##*/}
+			read -r -i "$remote" -e -p "Enter a name to auto-add this remote, leave blank to abort: " || true
+			if [[ "$REPLY" == "" ]] ; then
+				echoerr "Please set it up yourself using:"
+				echoerr "    $ git remote add <name> $url"
+				echoerr "with a name of your choice."
+				exit 1
+			fi
+
+			git remote add $remote $url
 		fi
 	fi
 
