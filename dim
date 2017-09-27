@@ -761,6 +761,7 @@ function dim_push_branch
 
 	update_linux_next $branch drm-intel-next-queued drm-intel-next-fixes drm-intel-fixes
 	update_linux_next $branch drm-misc-next drm-misc-next-fixes drm-misc-fixes
+	update_linux_next $branch drm-amd-next drm-amd-next-fixes drm-amd-fixes
 
 	dim_rebuild_tip
 }
