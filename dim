@@ -252,42 +252,71 @@ fi
 # The below functions map between these.
 #
 
-function url_to_remote # url
+function url_to_remote # url [url ...]
 {
 	local url remote
 
-	url="$1"
-
-	if [[ -z "$url" ]]; then
-		echoerr "$0 without url"
+	if [[ "$#" = "0" ]]; then
+		echoerr "url_to_remote without URLs"
 		return 1
 	fi
 
-	remote=$(git remote -v | grep -m 1 "$url" | cut -f 1)
-
-	if [[ -z "$remote" ]]; then
-		git_url=$(echo $url | sed -e 's/git\./anongit./' -e 's/ssh:/git:/')
-		remote=$(git remote -v | grep -m 1 "$git_url" | cut -f 1)
-
-		if [[ -z "$remote" ]]; then
-			echoerr "No git remote for url $url or $git_url found in $(pwd)"
-			remote=${url%.git}
-			remote=${remote##*/}
-			read -r -i "$remote" -e -p "Enter a name to auto-add this remote, leave blank to abort: " || true
-			if [[ "$REPLY" == "" ]] ; then
-				echoerr "Please set it up yourself using:"
-				echoerr "    $ git remote add <name> $url"
-				echoerr "with a name of your choice."
-				exit 1
-			fi
-
-			git remote add $remote $url
+	for url; do
+		remote=$(git remote -v | grep -m 1 "$url" | cut -f 1)
+		if [[ -n "$remote" ]]; then
+			echo "$remote"
+			return 0
 		fi
+	done
+
+	echoerr "No git remote for any of the URLs $* found in $(pwd)"
+
+	url=$1
+	remote=${url%.git}
+	remote=${remote##*/}
+	read -r -i "$remote" -e -p "Enter a name to auto-add this remote, leave blank to abort: " || true
+	if [[ "$REPLY" == "" ]] ; then
+		echoerr "Please set it up yourself using:"
+		echoerr "    $ git remote add <name> $url"
+		echoerr "with a name of your choice."
+		exit 1
 	fi
+
+	git remote add $remote $url
 
 	echo $remote
 
 	return 0
+}
+
+function url_to_git_url # url [url ...]
+{
+	local url git_url
+
+	if [[ "$#" = "0" ]]; then
+		echoerr "url_to_git_url without URLs"
+		return 1
+	fi
+
+	# Find the git:// URL, converting from ssh:// URL as fallback
+	for url; do
+		case $url in
+			git://*)
+				git_url=$url
+				break
+				;;
+			ssh://*)
+				git_url=$(echo $url | sed -e 's/git\./anongit./' -e 's/ssh:/git:/')
+				;;
+		esac
+	done
+
+	if [[ -z "$git_url" ]]; then
+		echoerr "No git or ssh URL in any of the URLs $*"
+		return 1
+	fi
+
+	echo $git_url
 }
 
 function branch_to_remote # branch
@@ -592,7 +621,7 @@ function commit_rerere_cache
 
 function dim_rebuild_tip
 {
-	local integration_branch specfile time first rerere repo url remote
+	local integration_branch specfile time first rerere repo url_list remote
 
 	integration_branch=drm-tip
 	specfile=$(mktemp)
@@ -624,8 +653,8 @@ function dim_rebuild_tip
 	echo "Done."
 
 	for repo in "${!drm_tip_repos[@]}"; do
-		url=${drm_tip_repos[$repo]}
-		remote=$(url_to_remote $url)
+		url_list=${drm_tip_repos[$repo]}
+		remote=$(url_to_remote $url_list)
 		echo -n "Fetching $repo (local remote $remote)... "
 		git_fetch_helper $remote
 		echo "Done."
@@ -636,8 +665,8 @@ function dim_rebuild_tip
 		local branch override sha1 fixup_file
 
 		read -r repo branch override <<< $conf
-		url=${drm_tip_repos[$repo]}
-		remote=$(url_to_remote $url)
+		url_list=${drm_tip_repos[$repo]}
+		remote=$(url_to_remote $url_list)
 		sha1=$remote/$branch
 
 		echo -n "Merging $repo (local remote $remote) $branch... "
@@ -1638,7 +1667,7 @@ function prep_pull_tag_summary
 # dim_pull_request branch upstream
 function dim_pull_request
 {
-	local branch upstream remote repo req_file url git_url suffix tag
+	local branch upstream remote repo req_file url_list git_url suffix tag
 
 	branch=${1:?$usage}
 	upstream=${2:?$usage}
@@ -1676,8 +1705,8 @@ function dim_pull_request
 		repo=$(branch_to_repo $branch)
 	fi
 
-	url=${drm_tip_repos[$repo]}
-	git_url=$(echo $url | sed -e 's/git\./anongit./' -e 's/ssh:/git:/')
+	url_list=${drm_tip_repos[$repo]}
+	git_url=$(url_to_git_url $url_list)
 
 	git request-pull $upstream $git_url $tag >> $req_file
 	$DRY $DIM_MUA -s "[PULL] $branch" \
@@ -1726,7 +1755,7 @@ function dim_list_branches
 dim_alias_ub=update-branches
 function dim_update_branches
 {
-	local repo remote
+	local repo remote url_list
 
 	cd $DIM_PREFIX/$DIM_DRM_INTEL
 
@@ -1737,8 +1766,8 @@ function dim_update_branches
 	fi
 
 	for repo in "${!drm_tip_repos[@]}"; do
-		url=${drm_tip_repos[$repo]}
-		if ! remote=$(url_to_remote $url 2>/dev/null); then
+		url_list=${drm_tip_repos[$repo]}
+		if ! remote=$(url_to_remote $url_list 2>/dev/null); then
 			continue
 		fi
 		echo -n "Fetching $repo (local remote $remote)... "
