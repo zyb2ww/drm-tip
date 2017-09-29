@@ -1609,6 +1609,8 @@ function dim_update_next_continue
 	cat > $req_file <<-HERE
 		Hi all,
 
+		The following changes tagged $tag_testing:
+
 		HERE
 	obj=$(git rev-parse $tag)
 	if [[ "$(git cat-file -t $obj)" == "tag" ]] ; then
