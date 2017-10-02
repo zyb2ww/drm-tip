@@ -1480,7 +1480,7 @@ function prep_pull_mail_overview
 			obj=$(git rev-parse $tag)
 			if [[ "$(git cat-file -t $obj)" == "tag" ]] ; then
 				echo $tag:
-				git cat-file -p $obj | tail -n+6
+				git cat-file -p $obj | tail -n+6 | sed -n '/^-----BEGIN PGP SIGNATURE-----$/q;p'
 			fi
 		done
 	fi
