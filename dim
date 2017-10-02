@@ -1612,12 +1612,8 @@ function dim_update_next_continue
 		The following changes tagged $tag_testing:
 
 		HERE
-	obj=$(git rev-parse $tag)
-	if [[ "$(git cat-file -t $obj)" == "tag" ]] ; then
-		git cat-file -p $obj | tail -n+6 >> $req_file
-	else
-		echo "*** CHANGELOG OVERVIEW HERE ***" >> $req_file
-	fi
+
+	prep_pull_mail_overview "$tag" >> $req_file
 	prep_pull_mail_signature >> $req_file
 
 	$DRY $DIM_MUA -s "Updated drm-intel-testing" \
