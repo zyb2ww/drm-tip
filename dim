@@ -1092,7 +1092,7 @@ function cherry_pick_branch
 	log=$(mktemp)
 	fail_log=$(mktemp)
 
-	intel_remote=$(url_to_remote $drm_intel_ssh)
+	intel_remote=$(repo_to_remote drm-intel)
 
 	# Look for commits in dinq tagged as fixes.
 	for commit in $(git_list_fixes $intel_remote/$branch..$intel_remote/drm-intel-next-queued -- drivers/gpu/drm/i915); do
@@ -1586,7 +1586,7 @@ function dim_update_next
 	$DRY git add drivers/gpu/drm/i915/i915_drv.h
 	git commit $DRY_RUN -sm "drm/i915: Update DRIVER_DATE to $driver_date"
 
-	gitk drm-intel-next-queued ^$(url_to_remote $drm_upstream_git)/drm-next &
+	gitk drm-intel-next-queued ^$(repo_to_remote drm-upstream)/drm-next &
 
 	# try to push dinq first in case someone raced
 	FORCE=1 dim_push_queued
@@ -1600,7 +1600,7 @@ function dim_update_next_continue
 
 	assert_branch drm-intel-next-queued
 
-	intel_remote=$(url_to_remote $drm_intel_ssh)
+	intel_remote=$(repo_to_remote drm-intel)
 	remote=$(url_to_remote $drm_tip_ssh)
 
 	git push $DRY_RUN -f $intel_remote drm-intel-next-queued:drm-intel-next
@@ -1641,7 +1641,7 @@ function dim_tag_next
 
 	cd $DIM_PREFIX/$DIM_REPO
 
-	intel_remote=$(url_to_remote $drm_intel_ssh)
+	intel_remote=$(repo_to_remote drm-intel)
 	git fetch $intel_remote
 
 	if [ $(git rev-parse drm-intel-next) == $(git rev-parse "drm-intel-next@{u}") ] ; then
@@ -1730,7 +1730,7 @@ function dim_pull_request
 
 function dim_pull_request_next
 {
-	upstream=${1:-$(url_to_remote $drm_upstream_git)/drm-next}
+	upstream=${1:-$(repo_to_remote drm-upstream)/drm-next}
 	dim_pull_request drm-intel-next $upstream
 }
 
@@ -1742,7 +1742,7 @@ function dim_pull_request_fixes
 
 function dim_pull_request_next_fixes
 {
-	upstream=${1:-$(url_to_remote $drm_upstream_git)/drm-next}
+	upstream=${1:-$(repo_to_remote drm-upstream)/drm-next}
 	dim_pull_request drm-intel-next-fixes $upstream
 }
 
@@ -1751,7 +1751,7 @@ function dim_list_upstreams
 {
 	local dim_drm_upstream_remote
 
-	dim_drm_upstream_remote=$(url_to_remote $drm_upstream_git)
+	dim_drm_upstream_remote=$(repo_to_remote drm-upstream)
 
 	echo origin/master
 	echo $dim_drm_upstream_remote/drm-next
@@ -1799,7 +1799,7 @@ function dim_update_branches
 		fi
 	done
 	if git_branch_exists drm-intel-next ; then
-		intel_remote=$(url_to_remote $drm_intel_ssh)
+		intel_remote=$(repo_to_remote drm-intel)
 
 		dim_checkout drm-intel-next
 		$DRY git reset --hard $intel_remote/drm-intel-next
@@ -1820,7 +1820,7 @@ function dim_status
 
 	cd $DIM_PREFIX/$DIM_REPO
 
-	drm_remote=$(url_to_remote $drm_upstream_git)
+	drm_remote=$(repo_to_remote drm-upstream)
 
 	for branch in $dim_branches ; do
 		repo=$(branch_to_repo $branch)
