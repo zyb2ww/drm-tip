@@ -48,9 +48,6 @@ DIM_PREFIX=${DIM_PREFIX:-$HOME/linux}
 # main maintainer repo under $DIM_PREFIX
 DIM_REPO=${DIM_REPO:-${DIM_DRM_INTEL:-src}}
 
-# name of the $drm_intel_ssh remote within $DIM_REPO
-DIM_DRM_INTEL_REMOTE=${DIM_DRM_INTEL_REMOTE:-drm-intel}
-
 # mail user agent. must support a subset of mutt(1) command line options:
 # usage: $DIM_MUA [-s subject] [-i file] [-c cc-addr] to-addr [...]
 DIM_MUA=${DIM_MUA:-mutt}
@@ -1089,14 +1086,16 @@ function git_list_fixes
 
 function cherry_pick_branch
 {
-	local branch log fail_log needed have_fixes
+	local branch log fail_log intel_remote needed have_fixes
 
 	branch=${1:?$usage}
 	log=$(mktemp)
 	fail_log=$(mktemp)
 
+	intel_remote=$(url_to_remote $drm_intel_ssh)
+
 	# Look for commits in dinq tagged as fixes.
-	for commit in $(git_list_fixes $DIM_DRM_INTEL_REMOTE/$branch..$DIM_DRM_INTEL_REMOTE/drm-intel-next-queued -- drivers/gpu/drm/i915); do
+	for commit in $(git_list_fixes $intel_remote/$branch..$intel_remote/drm-intel-next-queued -- drivers/gpu/drm/i915); do
 		echo -n "Considering $(dim_cite $commit)... "
 
 		# Look at history for already cherry-picked fixes.
@@ -1597,13 +1596,14 @@ function dim_update_next
 
 function dim_update_next_continue
 {
-	local remote req_file suffix tag tag_testing
+	local remote intel_remote req_file suffix tag tag_testing
 
 	assert_branch drm-intel-next-queued
 
+	intel_remote=$(url_to_remote $drm_intel_ssh)
 	remote=$(url_to_remote $drm_tip_ssh)
 
-	git push $DRY_RUN -f $DIM_DRM_INTEL_REMOTE drm-intel-next-queued:drm-intel-next
+	git push $DRY_RUN -f $intel_remote drm-intel-next-queued:drm-intel-next
 	tag=drm-intel-next-$today
 	tag_testing=drm-intel-testing-$today
 
@@ -1612,13 +1612,13 @@ function dim_update_next_continue
 		tag_testing="drm-intel-testing-$today-$((++suffix))"
 	done
 
-	$DRY git tag -a $DIM_GPG_KEYID $tag $DIM_DRM_INTEL_REMOTE/drm-intel-next
-	git push $DRY_RUN $DIM_DRM_INTEL_REMOTE $tag
+	$DRY git tag -a $DIM_GPG_KEYID $tag $intel_remote/drm-intel-next
+	git push $DRY_RUN $intel_remote $tag
 
 	echo "Updating drm-intel-testing to latest drm-tip"
-	git push $DRY_RUN $DIM_DRM_INTEL_REMOTE +$remote/drm-tip:drm-intel-testing
-	$DRY git tag $tag_testing $DIM_DRM_INTEL_REMOTE/drm-intel-testing
-	$DRY git push $DIM_DRM_INTEL_REMOTE $tag_testing
+	git push $DRY_RUN $intel_remote +$remote/drm-tip:drm-intel-testing
+	$DRY git tag $tag_testing $intel_remote/drm-intel-testing
+	$DRY git push $intel_remote $tag_testing
 
 	req_file=$(mktemp)
 	cat > $req_file <<-HERE
@@ -1637,10 +1637,12 @@ function dim_update_next_continue
 
 function dim_tag_next
 {
-	local tag suffix
+	local intel_remote tag suffix
 
 	cd $DIM_PREFIX/$DIM_REPO
-	git fetch $DIM_DRM_INTEL_REMOTE
+
+	intel_remote=$(url_to_remote $drm_intel_ssh)
+	git fetch $intel_remote
 
 	if [ $(git rev-parse drm-intel-next) == $(git rev-parse "drm-intel-next@{u}") ] ; then
 		echo "Tagging current drm-intel-next"
@@ -1650,8 +1652,8 @@ function dim_tag_next
 			tag="drm-intel-next-$today-$((++suffix))"
 		done
 
-		$DRY git tag -a $DIM_GPG_KEYID $tag $DIM_DRM_INTEL_REMOTE/drm-intel-next
-		git push $DRY_RUN $DIM_DRM_INTEL_REMOTE $tag
+		$DRY git tag -a $DIM_GPG_KEYID $tag $intel_remote/drm-intel-next
+		git push $DRY_RUN $intel_remote $tag
 	else
 		echo "drm-intel-next not up-to-date, aborting"
 		exit
@@ -1765,7 +1767,7 @@ function dim_list_branches
 dim_alias_ub=update-branches
 function dim_update_branches
 {
-	local repo remote url_list
+	local repo remote url_list intel_remote
 
 	cd $DIM_PREFIX/$DIM_REPO
 
@@ -1797,8 +1799,10 @@ function dim_update_branches
 		fi
 	done
 	if git_branch_exists drm-intel-next ; then
+		intel_remote=$(url_to_remote $drm_intel_ssh)
+
 		dim_checkout drm-intel-next
-		$DRY git reset --hard $DIM_DRM_INTEL_REMOTE/drm-intel-next
+		$DRY git reset --hard $intel_remote/drm-intel-next
 	fi
 
 	cd $DIM_PREFIX/maintainer-tools

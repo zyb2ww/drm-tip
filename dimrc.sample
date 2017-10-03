@@ -10,10 +10,6 @@
 # Name of the main maintainer repo under $DIM_PREFIX.
 #DIM_REPO=src
 
-# Name of the remote for ssh://git.freedesktop.org/git/drm-intel within
-# $DIM_REPO
-#DIM_DRM_INTEL_REMOTE=danvet
-
 # Mail User Agent supporting a subset of mutt(1) command line options:
 # [-s subject] [-i file] [-c cc-addr] to-addr [...]
 #DIM_MUA=mutt

@@ -477,10 +477,6 @@ DIM_REPO
 --------
 The main maintainer repository under \$DIM_PREFIX.
 
-DIM_DRM_INTEL_REMOTE
---------------------
-Name of the $drm_intel_ssh remote within \$DIM_REPO.
-
 DIM_MUA
 -------
 Mail user agent. Must support the following subset of **mutt(1)** command line
