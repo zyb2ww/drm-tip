@@ -4,14 +4,14 @@
 # Defaults are in the comments below.
 
 # Prefix for the repo directories. The prefix will contain
-# $DIM_DRM_INTEL, drm-tip, maintainer-tools, etc.
+# $DIM_REPO, drm-tip, maintainer-tools, etc.
 #DIM_PREFIX=$HOME/linux
 
 # Name of the main maintainer repo under $DIM_PREFIX.
-#DIM_DRM_INTEL=src
+#DIM_REPO=src
 
 # Name of the remote for ssh://git.freedesktop.org/git/drm-intel within
-# $DIM_DRM_INTEL
+# $DIM_REPO
 #DIM_DRM_INTEL_REMOTE=danvet
 
 # Mail User Agent supporting a subset of mutt(1) command line options:

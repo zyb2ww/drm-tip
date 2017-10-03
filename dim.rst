@@ -64,7 +64,7 @@ when adding a remote and, if it's not already done, you should add a new entry i
     $ printf '\nHost git.freedesktop.org\n\tUser <username>' >> ~/.ssh/config
 
 You should now have a main repository for patch application. The directory
-corresponding to this repository is defined by DIM_DRM_INTEL in your .dimrc.
+corresponding to this repository is defined by DIM_REPO in your .dimrc.
 You should also have directories called maintainer-tools, drm-tip (for
 rebuilding the tree), and drm-rerere for some dim-internal book-keeping.
 
@@ -316,7 +316,7 @@ branches if "all" is given.
 for-each-workdir *command*
 --------------------------
 Run the given command in all active workdirs including the main repository under
-\$DIM_DRM_INTEL.
+\$DIM_REPO.
 
 COMMANDS FOR MAINTAINERS
 ========================
@@ -473,13 +473,13 @@ DIM_PREFIX
 ----------
 Path prefix for kernel repositories.
 
-DIM_DRM_INTEL
--------------
+DIM_REPO
+--------
 The main maintainer repository under \$DIM_PREFIX.
 
 DIM_DRM_INTEL_REMOTE
 --------------------
-Name of the $drm_intel_ssh remote within \$DIM_DRM_INTEL.
+Name of the $drm_intel_ssh remote within \$DIM_REPO.
 
 DIM_MUA
 -------

@@ -46,9 +46,9 @@ fi
 DIM_PREFIX=${DIM_PREFIX:-$HOME/linux}
 
 # main maintainer repo under $DIM_PREFIX
-DIM_DRM_INTEL=${DIM_DRM_INTEL:-src}
+DIM_REPO=${DIM_REPO:-${DIM_DRM_INTEL:-src}}
 
-# name of the $drm_intel_ssh remote within $DIM_DRM_INTEL
+# name of the $drm_intel_ssh remote within $DIM_REPO
 DIM_DRM_INTEL_REMOTE=${DIM_DRM_INTEL_REMOTE:-drm-intel}
 
 # mail user agent. must support a subset of mutt(1) command line options:
@@ -224,7 +224,7 @@ fi
 export __dim_running=1
 
 if [ "$subcommand" != "setup" ] && [ "$subcommand" != "help" ] && [ "$subcommand" != "usage" ]; then
-	for d in $DIM_PREFIX $DIM_PREFIX/$DIM_DRM_INTEL $DIM_PREFIX/drm-rerere $DIM_PREFIX/drm-tip; do
+	for d in $DIM_PREFIX $DIM_PREFIX/$DIM_REPO $DIM_PREFIX/drm-rerere $DIM_PREFIX/drm-tip; do
 		if [ ! -d $d ]; then
 			echoerr "$d is missing, please check your configuration and/or run dim setup"
 			exit 1
@@ -566,7 +566,7 @@ function rr_cache_dir
 	if [ -d $DIM_PREFIX/drm-tip/.git/ ] ; then
 		echo $DIM_PREFIX/drm-tip/.git/rr-cache
 	else
-		echo $DIM_PREFIX/$DIM_DRM_INTEL/.git/rr-cache
+		echo $DIM_PREFIX/$DIM_REPO/.git/rr-cache
 	fi
 }
 
@@ -1216,7 +1216,7 @@ function dim_create_branch
 	start=${2:-HEAD}
 	repo="drm-intel"
 
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 
 	repo=${branch%%/*}
 	branch=${branch#*/}
@@ -1243,7 +1243,7 @@ function dim_remove_branch
 
 	branch=${1:?$usage}
 
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 
 	if [[ -d $DIM_PREFIX/$branch ]] ; then
 		rm -R $DIM_PREFIX/$branch
@@ -1284,7 +1284,7 @@ function dim_cd
 	if [[ -d $DIM_PREFIX/$1 ]] ; then
 		path=$DIM_PREFIX/$1
 	else
-		path=$DIM_PREFIX/$DIM_DRM_INTEL
+		path=$DIM_PREFIX/$DIM_REPO
 	fi
 
 	echo $path > ~/.dim-last-path
@@ -1537,12 +1537,12 @@ function dim_create_workdir
 
 		if git help worktree &> /dev/null; then
 			# native worktree support was added in git 2.5
-			cd $DIM_DRM_INTEL
+			cd $DIM_REPO
 			$DRY git worktree prune
 			$DRY git worktree add $DIM_PREFIX/$branch $branch
 			cd $DIM_PREFIX
 		else
-			$DRY git-new-workdir $DIM_DRM_INTEL $branch $branch
+			$DRY git-new-workdir $DIM_REPO $branch $branch
 		fi
 	done
 }
@@ -1550,7 +1550,7 @@ function dim_create_workdir
 dim_alias_fw=for-each-workdir
 function dim_for_each_workdir
 {
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 	"$@"
 	for branch in $dim_branches ; do
 		if [[ -d $DIM_PREFIX/$branch ]] ; then
@@ -1639,7 +1639,7 @@ function dim_tag_next
 {
 	local tag suffix
 
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 	git fetch $DIM_DRM_INTEL_REMOTE
 
 	if [ $(git rev-parse drm-intel-next) == $(git rev-parse "drm-intel-next@{u}") ] ; then
@@ -1690,7 +1690,7 @@ function dim_pull_request
 	if [ "$branch" != "drm-intel-next" ]; then
 		assert_branch $branch
 	else
-		cd $DIM_PREFIX/$DIM_DRM_INTEL
+		cd $DIM_PREFIX/$DIM_REPO
 	fi
 
 	git_fetch_helper ${upstream%%/*}
@@ -1767,7 +1767,7 @@ function dim_update_branches
 {
 	local repo remote url_list
 
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 
 	remote=$(url_to_remote $linux_upstream_git)
 	echo -n "Fetching linux (local remote $remote)... "
@@ -1814,7 +1814,7 @@ function dim_status
 {
 	local repo remote drm_remote patches
 
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 
 	drm_remote=$(url_to_remote $drm_upstream_git)
 
@@ -1842,7 +1842,7 @@ function setup_aux_checkout # name url directory
 
 	if [ ! -d $dir ]; then
 		if git help worktree &> /dev/null ; then
-			cd $DIM_PREFIX/$DIM_DRM_INTEL
+			cd $DIM_PREFIX/$DIM_REPO
 			remote=$(url_to_remote $url)
 			if ! git_branch_exists $name ; then
 				git_fetch_helper $remote
@@ -1850,10 +1850,10 @@ function setup_aux_checkout # name url directory
 			fi
 			git worktree add $DIM_PREFIX/$dir $name
 		else
-			git clone --reference=$DIM_PREFIX/$DIM_DRM_INTEL/.git $url $dir
+			git clone --reference=$DIM_PREFIX/$DIM_REPO/.git $url $dir
 			cd $dir
 			git config remote.origin.url $url
-			echo "$DIM_PREFIX/$DIM_DRM_INTEL/.git/objects" > .git/objects/info/alternates
+			echo "$DIM_PREFIX/$DIM_REPO/.git/objects" > .git/objects/info/alternates
 			git repack -a -d -l
 			remote=origin
 		fi
@@ -1880,11 +1880,11 @@ function dim_setup
 	fi
 	cd $DIM_PREFIX
 
-	if [ ! -d $DIM_PREFIX/$DIM_DRM_INTEL/.git ]; then
-		echoerr "No git checkout found in $DIM_PREFIX/$DIM_DRM_INTEL."
-		echoerr "Please set up your maintainer linux repository at $DIM_PREFIX/$DIM_DRM_INTEL with"
+	if [ ! -d $DIM_PREFIX/$DIM_REPO/.git ]; then
+		echoerr "No git checkout found in $DIM_PREFIX/$DIM_REPO."
+		echoerr "Please set up your maintainer linux repository at $DIM_PREFIX/$DIM_REPO with"
 		echoerr "    cd $DIM_PREFIX"
-		echoerr "    git clone $linux_upstream_git $DIM_DRM_INTEL"
+		echoerr "    git clone $linux_upstream_git $DIM_REPO"
 		echoerr "or update your configuration (see dimrc.sample)."
 		exit 1
 	fi
@@ -1957,7 +1957,7 @@ function dim_tc
 
 	sha1=${1:?$usage}
 
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 	tag=$(git tag --contains $sha1 | grep ^v | sort -V | head -n 1)
 	if [[ -n "$tag" ]]; then
 		echo "$tag"
@@ -1985,7 +1985,7 @@ function dim_cite
 
 	sha1=${1:?$usage}
 
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 
 	git log -1 $sha1 "--pretty=format:%H (\"%s\")%n" | \
 		sed -e 's/\([0-f]\{12\}\)[0-f]*/\1/'
@@ -1997,7 +1997,7 @@ function dim_fixes
 
 	sha1=${1:?$usage}
 
-	cd $DIM_PREFIX/$DIM_DRM_INTEL
+	cd $DIM_PREFIX/$DIM_REPO
 	echo "Fixes: $(dim_cite $sha1)"
 
 	(
