@@ -282,7 +282,7 @@ function url_to_remote # url [url ...]
 		echoerr "Please set it up yourself using:"
 		echoerr "    $ git remote add <name> $url"
 		echoerr "with a name of your choice."
-		exit 1
+		return 1
 	fi
 
 	git remote add $remote $url
@@ -1749,10 +1749,7 @@ function dim_list_upstreams
 {
 	local dim_drm_upstream_remote
 
-	# Handle failures gracefully
-	if ! dim_drm_upstream_remote=$(url_to_remote $drm_upstream_git 2>/dev/null); then
-		return 0
-	fi
+	dim_drm_upstream_remote=$(url_to_remote $drm_upstream_git)
 
 	echo origin/master
 	echo $dim_drm_upstream_remote/drm-next
@@ -1772,17 +1769,14 @@ function dim_update_branches
 
 	cd $DIM_PREFIX/$DIM_DRM_INTEL
 
-	if remote=$(url_to_remote $linux_upstream_git 2>/dev/null); then
-		echo -n "Fetching linux (local remote $remote)... "
-		git_fetch_helper $remote
-		echo "Done."
-	fi
+	remote=$(url_to_remote $linux_upstream_git)
+	echo -n "Fetching linux (local remote $remote)... "
+	git_fetch_helper $remote
+	echo "Done."
 
 	for repo in "${!drm_tip_repos[@]}"; do
 		url_list=${drm_tip_repos[$repo]}
-		if ! remote=$(url_to_remote $url_list 2>/dev/null); then
-			continue
-		fi
+		remote=$(url_to_remote $url_list)
 		echo -n "Fetching $repo (local remote $remote)... "
 		git_fetch_helper $remote
 		echo "Done."
@@ -1826,9 +1820,7 @@ function dim_status
 
 	for branch in $dim_branches ; do
 		repo=$(branch_to_repo $branch)
-		if ! remote=$(repo_to_remote $repo) ; then
-			continue
-		fi
+		remote=$(repo_to_remote $repo)
 
 		patches=$(git log --oneline $remote/$branch ^origin/master ^$drm_remote/drm-next ^$drm_remote/drm-fixes | wc -l)
 
