@@ -335,7 +335,17 @@ function branch_to_remote # branch
 
 function repo_to_remote # repo
 {
-	url_to_remote ${drm_tip_repos[$1]}
+	local repo url_list
+
+	repo=$1
+	url_list=${drm_tip_repos[$repo]}
+
+	if [[ -z "$url_list" ]]; then
+		echoerr "unknown repo $repo"
+		return 1
+	fi
+
+	url_to_remote $url_list
 }
 
 function branch_to_repo # branch
@@ -1208,9 +1218,11 @@ function dim_create_branch
 
 	cd $DIM_PREFIX/$DIM_DRM_INTEL
 
-	if ( repo_to_remote ${branch%%/*} ) &> /dev/null ; then
-		repo=${branch%%/*}
-		branch=${branch#*/}
+	repo=${branch%%/*}
+	branch=${branch#*/}
+	if [[ "$repo" = "$branch" ]]; then
+		echoerr "give branch in format repo/branch"
+		return 1
 	fi
 
 	remote=$(repo_to_remote $repo)

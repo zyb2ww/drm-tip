@@ -298,13 +298,11 @@ Compile-test the current tree and if successful resolve a
 conflicted git am. Also runs the patch checker afterwards. This fails to add the
 Link: tag, so you'll need to add it manually or use the **add-link** subcommand.
 
-create-branch *branch* [*commit-ish*]
--------------------------------------
-Create a new topic branch with the given name. Note that topic/ is not
-automatically prepended. The branch starts at HEAD or the given commit-ish. Note
-that by default the new branch is created in the drm-intel.git repository. If
-you want to create a branch somewhere else, then you need to prepend the remote
-name from nightly.conf, e.g. "drm-misc/topic/branch".
+create-branch *repo*/*branch* [*commit-ish*]
+--------------------------------------------
+Create a new topic branch in the given *repo* named *branch*. The branch starts
+at HEAD or the given *commit-ish*. Note that topic/ is not automatically added
+to the branch name. Branch names should be unique across repos.
 
 remove-branch *branch*
 ----------------------
