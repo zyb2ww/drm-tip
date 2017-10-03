@@ -1953,7 +1953,7 @@ function dim_cat_to_fixup
 
 function dim_tc
 {
-	local sha1 tag dim_drm_upstream_remote
+	local sha1 tag conf remote_branches
 
 	sha1=${1:?$usage}
 
@@ -1961,15 +1961,22 @@ function dim_tc
 	tag=$(git tag --contains $sha1 | grep ^v | sort -V | head -n 1)
 	if [[ -n "$tag" ]]; then
 		echo "$tag"
-	else
-		dim_drm_upstream_remote=$(url_to_remote $drm_upstream_git)
-		# not in a tagged release, show upstream branches
-		git branch -r --contains $sha1 \
-		    $DIM_DRM_INTEL_REMOTE/* \
-		    $dim_drm_upstream_remote/drm-next \
-		    $dim_drm_upstream_remote/drm-fixes \
-		    origin/master | sed 's/^ *//'
+		return 0
 	fi
+
+	# not in a tagged release, show upstream branches
+	remote_branches="origin/master"
+	for conf in "${drm_tip_config[@]}"; do
+		local repo branch override url_list remote
+
+		read -r repo branch override <<< $conf
+		url_list=${drm_tip_repos[$repo]}
+		remote=$(url_to_remote $url_list)
+
+		remote_branches="$remote_branches $remote/$branch"
+	done
+
+	git branch -r --contains $sha1 $remote_branches | sed 's/^ *//' | sort
 }
 
 function dim_cite
