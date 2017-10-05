@@ -1751,6 +1751,8 @@ function dim_list_upstreams
 {
 	local dim_drm_upstream_remote
 
+	cd $DIM_PREFIX/$DIM_REPO
+
 	dim_drm_upstream_remote=$(repo_to_remote drm-upstream)
 
 	echo origin/master
