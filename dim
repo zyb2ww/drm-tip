@@ -657,11 +657,6 @@ function dim_rebuild_tip
 		exit 1
 	fi
 
-	remote=$(url_to_remote $drm_tip_ssh)
-	echo -n "Fetching drm-tip (local remote $remote)... "
-	git_fetch_helper $remote
-	echo "Done."
-
 	for repo in "${!drm_tip_repos[@]}"; do
 		url_list=${drm_tip_repos[$repo]}
 		remote=$(url_to_remote $url_list)
@@ -1772,11 +1767,6 @@ function dim_update_branches
 	local repo remote url_list intel_remote
 
 	cd $DIM_PREFIX/$DIM_REPO
-
-	remote=$(url_to_remote $linux_upstream_git)
-	echo -n "Fetching linux (local remote $remote)... "
-	git_fetch_helper $remote
-	echo "Done."
 
 	for repo in "${!drm_tip_repos[@]}"; do
 		url_list=${drm_tip_repos[$repo]}
