@@ -78,11 +78,6 @@ dim=$(basename $0)
 
 today=$(date +%Y-%m-%d)
 
-drm_intel_ssh=ssh://git.freedesktop.org/git/drm-intel
-drm_tip_ssh=ssh://git.freedesktop.org/git/drm-tip
-drm_upstream_git=git://people.freedesktop.org/~airlied/linux
-linux_upstream_git=git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
-
 # Recipients for all dim based pull requests.
 # Add To: lines to the end, Cc: lines in the beginning with -c.
 pull_request_recipients=(
@@ -1865,7 +1860,12 @@ function setup_aux_checkout # name url directory
 
 function dim_setup
 {
-	local remote
+	local remote drm_intel_ssh drm_tip_ssh drm_upstream_git linux_upstream_git
+
+	drm_intel_ssh=ssh://git.freedesktop.org/git/drm-intel
+	drm_tip_ssh=ssh://git.freedesktop.org/git/drm-tip
+	drm_upstream_git=git://people.freedesktop.org/~airlied/linux
+	linux_upstream_git=git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 
 	if [ ! -d $DIM_PREFIX ]; then
 		echoerr "Directory $DIM_PREFIX doesn't exist."
