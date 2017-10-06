@@ -23,7 +23,7 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-drm-intel maintainer script.
+drm maintainer script.
 
 Used to maintain drm-intel_ and drm-misc_ git repositories.
 
@@ -54,7 +54,8 @@ your .dimrc to match your setup and then run::
 
 This will also check out the latest maintainer-tools branches, so please replace
 the dim you just downloaded with a symlink after this step. And by the way, if
-you have improvements for dim, please submit them to intel-gfx.
+you have improvements for dim, see `CONTRIBUTING, BUG REPORTS AND DISCUSSION`_
+below.
 
 If you have a freedesktop.org account and plan to push things on one of the
 drm-xxx repos, you should use the ssh://git.freedesktop.org/git/drm-xxx urls
@@ -92,6 +93,9 @@ rebasing) push out the new tree with::
 
 This will also rebuild a new drm-tip integration tree. For historical reasons
 there's shortcut for the drm-intel specific branches for most of these commands.
+
+Please subscribe to the https://lists.freedesktop.org/mailman/listinfo/dim-tools
+mailing list if you use dim.
 
 OPTIONS
 =======
@@ -416,7 +420,7 @@ list-aliases
 ------------
 List all aliases for the subcommand names. Useful for autocompletion scripts.
 
-See \$dim_alias_<alias> under ENVIRONMENT below on how to define aliases.
+See \$dim_alias_<alias> under ENVIRONMENT_ below on how to define aliases.
 
 list-branches
 -------------
@@ -568,17 +572,13 @@ a place as any).
 
   $ dim remove-branch topic/*topic-branch*
 
-CONTRIBUTING
-============
+CONTRIBUTING, BUG REPORTS AND DISCUSSION
+========================================
 
-Submit patches for any of the maintainer tools to the
-intel-gfx@lists.freedesktop.org mailing list with [maintainer-tools PATCH]
-prefix. Use::
+Submit patches, bug reports, and questions for any of the maintainer tools and
+documentation to the dim-tools@lists.freedesktop.org mailing list.
 
-  $ git format-patch --subject-prefix="maintainer-tools PATCH"
-
-for that. Please make sure your patches pass the build and self tests by
-running::
+Please make sure your patches pass the build and self tests by running::
 
   $ make check
 
