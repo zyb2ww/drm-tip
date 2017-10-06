@@ -284,34 +284,34 @@ function url_to_remote # url [url ...]
 	return 0
 }
 
-function url_to_git_url # url [url ...]
+function pick_protocol_url # (git|ssh|https|whatever) url [url ...]
 {
-	local url git_url
+	local url protocol protocol_url
 
-	if [[ "$#" = "0" ]]; then
-		echoerr "url_to_git_url without URLs"
+	if [[ "$#" -lt "2" ]]; then
+		echoerr "pick_protocol_url without protocol or URLs"
 		return 1
 	fi
 
-	# Find the git:// URL, converting from ssh:// URL as fallback
+	protocol=$1
+	shift
+
+	# Find the URL that has given protocol
 	for url; do
 		case $url in
-			git://*)
-				git_url=$url
+			${protocol}://*)
+				protocol_url=$url
 				break
-				;;
-			ssh://*)
-				git_url=$(echo $url | sed -e 's/git\./anongit./' -e 's/ssh:/git:/')
 				;;
 		esac
 	done
 
-	if [[ -z "$git_url" ]]; then
-		echoerr "No git or ssh URL in any of the URLs $*"
+	if [[ -z "$protocol_url" ]]; then
+		echoerr "No $protocol URL in any of the URLs: $*"
 		return 1
 	fi
 
-	echo $git_url
+	echo $protocol_url
 }
 
 function branch_to_remote # branch
@@ -1709,7 +1709,7 @@ function dim_pull_request
 	fi
 
 	url_list=${drm_tip_repos[$repo]}
-	git_url=$(url_to_git_url $url_list)
+	git_url=$(pick_protocol_url git $url_list)
 
 	git request-pull $upstream $git_url $tag >> $req_file
 	$DRY $DIM_MUA -s "[PULL] $branch" \
