@@ -626,7 +626,7 @@ function commit_rerere_cache
 
 function dim_rebuild_tip
 {
-	local integration_branch specfile time first rerere repo url_list remote
+	local integration_branch specfile time first rerere repo remote
 
 	integration_branch=drm-tip
 	specfile=$(mktemp)
@@ -653,8 +653,7 @@ function dim_rebuild_tip
 	fi
 
 	for repo in "${!drm_tip_repos[@]}"; do
-		url_list=${drm_tip_repos[$repo]}
-		remote=$(url_to_remote $url_list)
+		remote=$(repo_to_remote $repo)
 		echo -n "Fetching $repo (local remote $remote)... "
 		git_fetch_helper $remote
 		echo "Done."
@@ -665,8 +664,7 @@ function dim_rebuild_tip
 		local branch override sha1 fixup_file
 
 		read -r repo branch override <<< $conf
-		url_list=${drm_tip_repos[$repo]}
-		remote=$(url_to_remote $url_list)
+		remote=$(repo_to_remote $repo)
 		sha1=$remote/$branch
 
 		echo -n "Merging $repo (local remote $remote) $branch... "
@@ -1759,13 +1757,12 @@ function dim_list_branches
 dim_alias_ub=update-branches
 function dim_update_branches
 {
-	local repo remote url_list intel_remote
+	local repo remote intel_remote
 
 	cd $DIM_PREFIX/$DIM_REPO
 
 	for repo in "${!drm_tip_repos[@]}"; do
-		url_list=${drm_tip_repos[$repo]}
-		remote=$(url_to_remote $url_list)
+		remote=$(repo_to_remote $repo)
 		echo -n "Fetching $repo (local remote $remote)... "
 		git_fetch_helper $remote
 		echo "Done."
@@ -1963,11 +1960,10 @@ function dim_tc
 	# not in a tagged release, show upstream branches
 	remote_branches="origin/master"
 	for conf in "${drm_tip_config[@]}"; do
-		local repo branch override url_list remote
+		local repo branch override remote
 
 		read -r repo branch override <<< $conf
-		url_list=${drm_tip_repos[$repo]}
-		remote=$(url_to_remote $url_list)
+		remote=$(repo_to_remote $repo)
 
 		remote_branches="$remote_branches $remote/$branch"
 	done
