@@ -491,7 +491,7 @@ function dim_retip
 		branch=$(git symbolic-ref --short HEAD)
 	fi
 
-	remote=$(url_to_remote $drm_tip_ssh)
+	remote=$(repo_to_remote drm-tip)
 	upstream=$(git_find_tip "$branch")
 
 	if [[ -z "$upstream" ]]; then
@@ -723,7 +723,7 @@ function dim_rebuild_tip
 	git commit --quiet -m "$integration_branch: $time integration manifest"
 	echo "Done."
 
-	remote=$(url_to_remote $drm_tip_ssh)
+	remote=$(repo_to_remote drm-tip)
 
 	echo -n "Pushing $integration_branch... "
 	git push $DRY_RUN $remote +HEAD >& /dev/null && echo "Done."
@@ -928,7 +928,7 @@ function dim_backmerge
 	upstream=${2:?$usage}
 
 	cd $DIM_PREFIX/drm-tip
-	tip_remote=$(url_to_remote $drm_tip_ssh)
+	tip_remote=$(repo_to_remote drm-tip)
 	git fetch -q $tip_remote || true
 
 	if ! git merge-base --is-ancestor $upstream $tip_remote/drm-tip ; then
@@ -1039,7 +1039,7 @@ function commit_list_references
 	local commit remote log
 
 	cd $DIM_PREFIX/drm-tip
-	remote=$(url_to_remote $drm_tip_ssh)
+	remote=$(repo_to_remote drm-tip)
 	git fetch -q $remote || true
 
 	commit="$1"
@@ -1560,7 +1560,7 @@ function dim_update_next
 
 	assert_branch drm-intel-next-queued
 
-	remote=$(url_to_remote $drm_tip_ssh)
+	remote=$(repo_to_remote drm-tip)
 
 	git pull --ff-only
 	git fetch drm-tip
@@ -1596,7 +1596,7 @@ function dim_update_next_continue
 	assert_branch drm-intel-next-queued
 
 	intel_remote=$(repo_to_remote drm-intel)
-	remote=$(url_to_remote $drm_tip_ssh)
+	remote=$(repo_to_remote drm-tip)
 
 	git push $DRY_RUN -f $intel_remote drm-intel-next-queued:drm-intel-next
 	tag=drm-intel-next-$today
