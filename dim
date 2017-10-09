@@ -269,8 +269,8 @@ function url_to_remote # url [url ...]
 	url=$1
 	remote=${url%.git}
 	remote=${remote##*/}
-	read -r -i "$remote" -e -p "Enter a name to auto-add this remote, leave blank to abort: " || true
-	if [[ "$REPLY" == "" ]] ; then
+	read -r -i "$remote" -e -p "Enter a name to auto-add this remote, leave blank to abort: " remote
+	if [[ -z "$remote" ]]; then
 		echoerr "Please set it up yourself using:"
 		echoerr "    $ git remote add <name> $url"
 		echoerr "with a name of your choice."
