@@ -589,39 +589,41 @@ function update_rerere_cache
 
 function commit_rerere_cache
 {
+	local remote file
+
 	echo -n "Updating rerere cache... "
 
 	cd $DIM_PREFIX/drm-rerere/
-	if git_is_current_branch rerere-cache ; then
-		remote=$(branch_to_remote rerere-cache)
-
-		if ! git pull -q ; then
-			echoerr "Failed to update the rerere cache."
-			echoerr "Please manually run"
-			echoerr "	$ cd $DIM_PREFIX/drm-rerere ; git pull"
-			echoerr "and fixup any issues."
-
-			return 1
-		fi
-		git add ./*.patch >& /dev/null || true
-		for file  in $(git ls-files -- rr-cache); do
-			if ! git log --since="60 days ago" --name-only -- $file | grep $file &> /dev/null; then
-				git rm $file &> /dev/null || true
-			fi
-		done
-		find rr-cache/ -mtime -1 -type f -not -name "thisimage*" -print0 | xargs -0 git add > /dev/null || true
-		git rm rr-cache/rr-cache &> /dev/null || true
-		if git commit -m "$time: $integration_branch rerere cache update" >& /dev/null; then
-			echo -n "New commit. "
-		else
-			echo -n "Nothing changed. "
-		fi
-		echo -n "Pushing rerere cache... "
-		git push $DRY_RUN $remote HEAD >& /dev/null && echo "Done."
-	else
+	if ! git_is_current_branch rerere-cache; then
 		echo "Fail: Branch setup for the rerere-cache is borked."
 		exit 1
 	fi
+
+	remote=$(branch_to_remote rerere-cache)
+
+	if ! git pull -q; then
+		echoerr "Failed to update the rerere cache."
+		echoerr "Please manually run"
+		echoerr "	$ cd $DIM_PREFIX/drm-rerere; git pull"
+		echoerr "and fixup any issues."
+
+		return 1
+	fi
+	git add ./*.patch >& /dev/null || true
+	for file  in $(git ls-files -- rr-cache); do
+		if ! git log --since="60 days ago" --name-only -- $file | grep $file &> /dev/null; then
+			git rm $file &> /dev/null || true
+		fi
+	done
+	find rr-cache/ -mtime -1 -type f -not -name "thisimage*" -print0 | xargs -0 git add > /dev/null || true
+	git rm rr-cache/rr-cache &> /dev/null || true
+	if git commit -m "$time: $integration_branch rerere cache update" >& /dev/null; then
+		echo -n "New commit. "
+	else
+		echo -n "Nothing changed. "
+	fi
+	echo -n "Pushing rerere cache... "
+	git push $DRY_RUN $remote HEAD >& /dev/null && echo "Done."
 }
 
 function dim_rebuild_tip
