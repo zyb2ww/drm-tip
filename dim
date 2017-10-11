@@ -378,6 +378,20 @@ function dim_uptodate
 	fi
 }
 
+function check_for_updates
+{
+	local stamp stampfile
+
+	stampfile=$HOME/.dim-update-check-timestamp
+
+	# daily check for updates based on file timestamp
+	stamp=$(stat --printf=%Y $stampfile 2>/dev/null || echo -n 0)
+	if [[ $((stamp + 24*60*60)) -lt $(date +%s) ]]; then
+		dim_uptodate || true
+		touch $stampfile
+	fi
+}
+
 function git_fetch_helper # remote
 {
 	local remote
@@ -2103,9 +2117,7 @@ function dim_usage
 }
 
 # occasional check for dim updates
-if [[ "$(($(date +%s) % 100))" -eq "0" ]] ; then
-        dim_uptodate || true
-fi
+check_for_updates
 
 # dim subcommand aliases (with bash 4.3+)
 if ! declare -n subcmd=dim_alias_${subcommand//-/_} &> /dev/null || \
