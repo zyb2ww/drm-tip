@@ -77,6 +77,7 @@ DIM_GPG_KEYID=${DIM_GPG_KEYID:+-u $DIM_GPG_KEYID}
 dim=$(basename $0)
 
 dim_today=$(date +%Y-%m-%d)
+dim_timestamp="$(date --utc +%Yy-%mm-%dd-%Hh-%Mm-%Ss) UTC"
 
 # Recipients for all dim based pull requests.
 # Add To: lines to the end, Cc: lines in the beginning with -c.
@@ -620,7 +621,7 @@ function commit_rerere_cache
 
 	commit_message=$(mktemp)
 	cat > $commit_message <<-EOF
-		$time: $integration_branch rerere cache update
+		$dim_timestamp: $integration_branch rerere cache update
 
 		$(git --version)
 		EOF
@@ -638,11 +639,10 @@ function commit_rerere_cache
 
 function dim_rebuild_tip
 {
-	local integration_branch specfile time first rerere repo remote
+	local integration_branch specfile first rerere repo remote
 
 	integration_branch=drm-tip
 	specfile=$(mktemp)
-	time="$(date --utc +%Yy-%mm-%dd-%Hh-%Mm-%Ss) UTC"
 	first=1
 
 	rerere=$DIM_PREFIX/drm-rerere
@@ -726,10 +726,10 @@ function dim_rebuild_tip
 		$INTERACTIVE
 	done
 
-	echo -n "Adding integration manifest $integration_branch: $time... "
+	echo -n "Adding integration manifest $integration_branch: $dim_timestamp... "
 	mv $specfile integration-manifest
 	git add integration-manifest
-	git commit --quiet -m "$integration_branch: $time integration manifest"
+	git commit --quiet -m "$integration_branch: $dim_timestamp integration manifest"
 	echo "Done."
 
 	remote=$(repo_to_remote drm-tip)
