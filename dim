@@ -589,7 +589,7 @@ function update_rerere_cache
 
 function commit_rerere_cache
 {
-	local remote file
+	local remote file commit_message
 
 	echo -n "Updating rerere cache... "
 
@@ -617,11 +617,21 @@ function commit_rerere_cache
 	done
 	find rr-cache/ -mtime -1 -type f -not -name "thisimage*" -print0 | xargs -0 git add > /dev/null || true
 	git rm rr-cache/rr-cache &> /dev/null || true
-	if git commit -m "$time: $integration_branch rerere cache update" >& /dev/null; then
+
+	commit_message=$(mktemp)
+	cat > $commit_message <<-EOF
+		$time: $integration_branch rerere cache update
+
+		$(git --version)
+		EOF
+
+	if git commit -F $commit_message >& /dev/null; then
 		echo -n "New commit. "
 	else
 		echo -n "Nothing changed. "
 	fi
+	rm $commit_message
+
 	echo -n "Pushing rerere cache... "
 	git push $DRY_RUN $remote HEAD >& /dev/null && echo "Done."
 }
