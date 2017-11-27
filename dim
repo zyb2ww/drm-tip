@@ -651,6 +651,16 @@ function commit_rerere_cache
 	git push $DRY_RUN $remote HEAD >& /dev/null && echo "Done."
 }
 
+function fetch_all
+{
+	for repo in "${!drm_tip_repos[@]}"; do
+		remote=$(repo_to_remote $repo)
+		echo -n "Fetching $repo (local remote $remote)... "
+		git_fetch_helper $remote
+		echo "Done."
+	done
+}
+
 function dim_rebuild_tip
 {
 	local integration_branch specfile first rerere repo remote
@@ -682,12 +692,7 @@ function dim_rebuild_tip
 	# that they look the same for everyone
 	git config merge.conflictstyle merge
 
-	for repo in "${!drm_tip_repos[@]}"; do
-		remote=$(repo_to_remote $repo)
-		echo -n "Fetching $repo (local remote $remote)... "
-		git_fetch_helper $remote
-		echo "Done."
-	done
+	fetch_all
 
 	# merge -fixes
 	for conf in "${drm_tip_config[@]}"; do
@@ -1833,6 +1838,8 @@ function dim_status
 	local repo remote drm_remote patches
 
 	cd $DIM_PREFIX/$DIM_REPO
+
+	fetch_all
 
 	drm_remote=$(repo_to_remote drm-upstream)
 
