@@ -114,6 +114,8 @@ aliases.
 COMMANDS FOR DEVELOPERS
 =======================
 
+These commands can all be run without a full dim setup.
+
 tc *commit-ish*
 ---------------
 Print the oldest Linux kernel release or -rc tag that contains the supplied

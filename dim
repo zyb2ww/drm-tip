@@ -421,7 +421,7 @@ function git_find_tip
 # $1: branch [optional]
 function dim_retip
 {
-	local branch upstream remote
+	local branch upstream new_upstream
 
 	branch="$1"
 
@@ -431,7 +431,11 @@ function dim_retip
 		branch=$(git symbolic-ref --short HEAD)
 	fi
 
-	remote=$(repo_to_remote drm-tip)
+	if repo_to_remote drm-tip &> /dev/null ; then
+		new_upstream=$(repo_to_remote drm-tip)/drm-tip
+	else
+		new_upstream=$(git branch -r | grep \/drm-tip$)
+	fi
 	upstream=$(git_find_tip "$branch")
 
 	if [[ -z "$upstream" ]]; then
@@ -439,7 +443,7 @@ function dim_retip
 		return 1
 	fi
 
-	git rebase --onto $remote/drm-tip $upstream $branch "$@"
+	git rebase --onto $new_upstream $upstream $branch "$@"
 }
 
 # update for-linux-next and for-linux-next-fixes branches
@@ -2129,7 +2133,33 @@ if ! declare -f $subcmd_func >/dev/null; then
 	exit 1
 fi
 
-if [ "$subcmd" != "setup" ] && [ "$subcmd" != "help" ] && [ "$subcmd" != "usage" ]; then
+# functions useful for developers don't need a full dim setup
+developer_commands=(
+	# developer commands
+	# these should match the developer section in dim.rst
+	"tc"
+	"cite"
+	"fixes"
+	"checkpatch"
+	"sparse"
+	"checker"
+	"retip"
+	# help commands
+	"help"
+	"usage"
+	# include setup
+	"setup"
+)
+
+developer_command=0
+for cmd in "${developer_commands[@]}" ; do
+	if [ $cmd = $subcmd ] ; then
+		developer_command=1
+		break;
+	fi
+done
+
+if [ $developer_command = "0" ]; then
 	for d in $DIM_PREFIX $DIM_PREFIX/$DIM_REPO $DIM_PREFIX/drm-rerere $DIM_PREFIX/drm-tip; do
 		if [ ! -d $d ]; then
 			echoerr "$d is missing, please check your configuration and/or run dim setup"
@@ -2138,6 +2168,10 @@ if [ "$subcmd" != "setup" ] && [ "$subcmd" != "help" ] && [ "$subcmd" != "usage"
 	done
 
 	read_integration_config
+else
+	if [ -r $DIM_PREFIX/drm-rerere/$integration_config ]; then
+		read_integration_config
+	fi
 fi
 
 # throw away to not confuse list-aliases
