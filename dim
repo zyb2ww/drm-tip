@@ -64,9 +64,6 @@ DIM_TEMPLATE_HELLO=${DIM_TEMPLATE_HELLO:-$HOME/.dim.template.hello}
 # signature pull request template
 DIM_TEMPLATE_SIGNATURE=${DIM_TEMPLATE_SIGNATURE:-$HOME/.dim.template.signature}
 
-# dim pull-request tag summary template
-DIM_TEMPLATE_TAG_SUMMARY=${DIM_TEMPLATE_TAG_SUMMARY:-$HOME/.dim.template.tagsummary}
-
 # GPG key id for signing tags. If unset, don't sign.
 DIM_GPG_KEYID=${DIM_GPG_KEYID:+-u $DIM_GPG_KEYID}
 
@@ -1641,10 +1638,14 @@ function dim_tag_next
 
 }
 
-function tag_summary
+function tag_summary # branch
 {
-	if [ -r $DIM_TEMPLATE_TAG_SUMMARY ]; then
-		cat $DIM_TEMPLATE_TAG_SUMMARY
+	local branch tag_template
+	branch=$1
+	tag_template=$DIM_PREFIX/drm-rerere/tag-templates/${branch//\//-}.txt
+
+	if [ -r $tag_template ]; then
+		cat $tag_template
 	else
 		cat <<-EOF
 		UAPI Changes:
@@ -1665,7 +1666,7 @@ function tag_branch
 	tag=$1
 	branch=$2
 
-	tag_summary | $DRY git tag -F- $tag "$branch@{upstream}"
+	tag_summary $branch | $DRY git tag -F- $tag "$branch@{upstream}"
 	$DRY git tag -a $DIM_GPG_KEYID -f $tag
 }
 

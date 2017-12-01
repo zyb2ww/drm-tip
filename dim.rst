@@ -502,10 +502,6 @@ DIM_TEMPLATE_SIGNATURE
 ----------------------
 Path to a file containing a signature template for pull request mails.
 
-DIM_TEMPLATE_TAG_SUMMARY
--------------------------
-Path to a file containing the template for dim pull-request tag summaries.
-
 DIM_GPG_KEYID
 -------------
 GPG key ID to use for signing tags. If set, tags will be signed. If unset, the
