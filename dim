@@ -1592,7 +1592,7 @@ function dim_update_next_continue
 		tag_testing="drm-intel-testing-$dim_today-$((++suffix))"
 	done
 
-	$DRY git tag -a $DIM_GPG_KEYID $tag $intel_remote/drm-intel-next
+	tag_branch $tag drm-intel-next
 	git push $DRY_RUN $intel_remote $tag
 
 	echo "Updating drm-intel-testing to latest drm-tip"
@@ -1632,7 +1632,7 @@ function dim_tag_next
 			tag="drm-intel-next-$dim_today-$((++suffix))"
 		done
 
-		$DRY git tag -a $DIM_GPG_KEYID $tag $intel_remote/drm-intel-next
+		tag_branch $tag drm-intel-next
 		git push $DRY_RUN $intel_remote $tag
 	else
 		echo "drm-intel-next not up-to-date, aborting"
@@ -1641,7 +1641,7 @@ function dim_tag_next
 
 }
 
-function prep_pull_tag_summary
+function tag_summary
 {
 	if [ -r $DIM_TEMPLATE_TAG_SUMMARY ]; then
 		cat $DIM_TEMPLATE_TAG_SUMMARY
@@ -1657,6 +1657,16 @@ function prep_pull_tag_summary
 
 		EOF
 	fi
+}
+
+function tag_branch
+{
+	local tag branch
+	tag=$1
+	branch=$2
+
+	tag_summary | $DRY git tag -F- $tag "$branch@{upstream}"
+	$DRY git tag -a $DIM_GPG_KEYID -f $tag
 }
 
 # dim_pull_request branch upstream
@@ -1692,8 +1702,7 @@ function dim_pull_request
 			tag="$branch-$dim_today-$((++suffix))"
 		done
 		gitk "$branch@{upstream}" ^$upstream &
-		prep_pull_tag_summary | $DRY git tag -F- $tag "$branch@{upstream}"
-		$DRY git tag -a $DIM_GPG_KEYID -f $tag
+		tag_branch $tag $branch
 		$DRY git push $remote $tag
 		prep_pull_mail $req_file $tag
 
