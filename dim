@@ -595,6 +595,23 @@ function fetch_all
 	done
 }
 
+function find_fixup_file # repo branch
+{
+	local file_paths repo branch rerere
+	repo=$1
+	branch=$2
+	rerere=$DIM_PREFIX/drm-rerere
+
+	file_paths="$rerere/${repo}-${branch//\//-}-fixup.patch
+	            $rerere/fixups/${branch//\//-}.patch"
+
+	for file_path in $file_paths; do
+		[ -f "$file_path" ] && break
+	done
+
+	echo "$file_path"
+}
+
 function dim_rebuild_tip
 {
 	local integration_branch specfile first rerere repo remote
@@ -652,8 +669,8 @@ function dim_rebuild_tip
 			echo "Fast-forward. Done."
 			true
 		else
-			fixup_file=$rerere/$repo-${branch//\//-}-fixup.patch
-			echo $fixup_file > .fixup_file_path
+			fixup_file=$(find_fixup_file $repo $branch)
+			echo $branch > .fixup_branch
 
 			git merge --rerere-autoupdate --no-commit $sha1 >& /dev/null || true
 			# normalize conflict markers
@@ -1917,10 +1934,22 @@ function dim_list_aliases
 		sed 's/^dim_alias_//;s/=/\t/;s/_/-/g'
 }
 
-function dim_cat_to_fixup
+function dim_cat_to_fixup # [branch]
 {
+	local fixup_file repo branch
+	branch=$1
+
 	cd $DIM_PREFIX/drm-tip
-	cat > $(cat .fixup_file_path)
+
+	if [ -z "$branch" ]; then
+		branch=$(cat .fixup_branch)
+	fi
+
+	repo=$(branch_to_repo $branch)
+	fixup_file=$(find_fixup_file $repo $branch)
+
+	cat > $fixup_file
+	echo "Applied fixup for $branch"
 }
 
 function dim_tc
