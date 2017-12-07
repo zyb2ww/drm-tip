@@ -1,0 +1,12 @@
+diff --git a/drivers/gpu/drm/i915/intel_pm.c b/drivers/gpu/drm/i915/intel_pm.c
+index 229e12303368..5836181d6f8a 100644
+--- a/drivers/gpu/drm/i915/intel_pm.c
++++ b/drivers/gpu/drm/i915/intel_pm.c
+@@ -8424,6 +8424,7 @@ static void cnp_init_clock_gating(struct drm_i915_private *dev_priv)
+ 
+ static void cnl_init_clock_gating(struct drm_i915_private *dev_priv)
+ {
++	u32 val;
+ 	cnp_init_clock_gating(dev_priv);
+ 
+ 	/* This is not an Wa. Enable for better image quality */
