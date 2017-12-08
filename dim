@@ -696,9 +696,12 @@ function dim_rebuild_tip
 # additional patch checks before pushing, e.g. for r-b tags
 function checkpatch_commit_push
 {
-	local sha1
+	local sha1 non_dim
 
 	sha1=$1
+	managed_branch=${2:-1}
+
+	echo checking $sha1, managed $managed_branch
 
 	# use real names for people with many different email addresses
 	author=$(git show -s $sha1 --format="format:%an")
@@ -717,7 +720,7 @@ function checkpatch_commit_push
 	fi
 
 	# check for Link tag
-	if ! git show -s $sha1 | grep -qi 'Link:'  ; then
+	if [[ "$managed_branch" = "1" ]] && ! git show -s $sha1 | grep -qi 'Link:'  ; then
 		warn_or_fail "$sha1 is lacking of link tag"
 	fi
 
@@ -864,7 +867,12 @@ function dim_apply_pull
 
 	echo $pull_branch
 
-	git pull $pull_branch
+	git fetch $pull_branch
+	for sha1 in $(git rev-list "HEAD..FETCH_HEAD" --no-merges) ; do
+		checkpatch_commit_push $sha1 0
+	done
+
+	$DRY git pull $pull_branch
 
 	message_id=$(message_get_id $file)
 
