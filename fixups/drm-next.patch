@@ -6,7 +6,7 @@ index 229e12303368..ea187c182383 100644
  
  static void cnl_init_clock_gating(struct drm_i915_private *dev_priv)
  {
-+	u64 val;
++	u32 val;
 +
  	cnp_init_clock_gating(dev_priv);
  
