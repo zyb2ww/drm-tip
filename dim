@@ -718,8 +718,6 @@ function checkpatch_commit_push
 	sha1=$1
 	managed_branch=${2:-1}
 
-	echo checking $sha1, managed $managed_branch
-
 	# use real names for people with many different email addresses
 	author=$(git show -s $sha1 --format="format:%an")
 	committer=$(git show -s $sha1 --format="format:%cn")
