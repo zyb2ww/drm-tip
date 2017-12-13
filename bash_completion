@@ -63,12 +63,8 @@ _dim ()
 		push-queued|push-fixes|push-next-fixes)
 			COMPREPLY=( $( compgen -W "-f" -- $cur ) )
 			;;
-		cat-to-fixup)
-		apply-branch)
-			COMPREPLY=( $( compgen -W "-s $nightly_branches" -- $cur ) )
-			;;
-		apply-queued|apply-fixes|apply-next-fixes)
-			COMPREPLY=( $( compgen -W "-s" -- $cur ) )
+		cat-to-fixup|apply-branch)
+			COMPREPLY=( $( compgen -W "$nightly_branches" -- $cur ) )
 			;;
 		magic-patch)
 			if [[ $args == 2 ]]; then
