@@ -431,7 +431,7 @@ function dim_retip
 	if repo_to_remote drm-tip &> /dev/null ; then
 		new_upstream=$(repo_to_remote drm-tip)/drm-tip
 	else
-		new_upstream=$(git branch -r | grep \/drm-tip$)
+		new_upstream=$(git branch -r | grep '\/drm-tip$')
 	fi
 	upstream=$(git_find_tip "$branch")
 

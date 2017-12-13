@@ -260,7 +260,7 @@ ADVANCED COMMANDS FOR COMMITTERS AND MAINTAINERS
 ================================================
 
 cat-to-fixup [*branch*]
-------------
+-----------------------
 Pipes stdin into the fixup patch file for the current drm-tip merge. A
 branch can be explicitly specified to fix up a non-conflicting tree that
 fails to build.
