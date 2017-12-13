@@ -1,0 +1,24 @@
+drm-misc-next for $kernel-version:
+
+# Try to summarize bigger changes (this should be much shorter than the git
+# shortlog). Especially don't list each trivial patch individually, only mention
+# them when it's a significant amount of changes or worth highlighting for other
+# reasons.
+#
+# Explain any backmerges.
+#
+# Drop any sections where there's nothing to explain.
+
+UAPI Changes:
+
+# Any uapi changes need to be higlighted
+
+Cross-subsystem Changes:
+
+# Non-drm changes/topic branches included
+
+Core Changes:
+
+# Highlight any
+
+Driver Changes:

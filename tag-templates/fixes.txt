@@ -1,0 +1,6 @@
+Short summary of fixes pull (less than what git shortlog provides):
+- explain anything non-fixes (e.g. cleanups) and why it's appropriate
+- highlight regressions
+- summarize pull requests contained
+This shouldn't be more than a few lines (or it indicates your fixes pull is a
+bit too big).
