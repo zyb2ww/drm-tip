@@ -56,7 +56,6 @@ strict digraph "drm-intel" {
        "drm-intel-next" [color=blue]
        "drm-intel-next-fixes" [color=blue]
        "drm-intel-next-queued" [label="drm-intel-next-queued\ntopic/* branches" color=blue]
-       "drm-tip" [color=blue]
        "drm-intel-testing" [color=blue]
        "drm-intel-internal" [color=blue]
 
@@ -72,14 +71,19 @@ strict digraph "drm-intel" {
        "sound/for-linus" [color=yellow style=dashed]
        "sound/for-next" [color=yellow style=dashed]
 
-       # nightly rebuild
+       # drm-tip
+       "drm-tip" [color=yellow]
+
+       # Intel contributions
        "drm-intel-fixes" -> "drm-tip" [label="rebuild" color=blue]
        "drm-intel-next-fixes" -> "drm-tip" [label="rebuild" color=blue]
        "drm-intel-next-queued" -> "drm-tip" [label="rebuild" color=blue]
-       "drm-next" -> "drm-tip" [label="rebuild" color=blue]
-       "drm-fixes" -> "drm-tip" [label="rebuild" color=blue]
-       "sound/for-next" -> "drm-tip" [label="rebuild" color=blue]
-       "sound/for-linus" -> "drm-tip" [label="rebuild" color=blue]
+
+       # external contributions
+       "drm-next" -> "drm-tip" [label="rebuild" color=yellow]
+       "drm-fixes" -> "drm-tip" [label="rebuild" color=yellow]
+       "sound/for-next" -> "drm-tip" [label="rebuild" color=yellow]
+       "sound/for-linus" -> "drm-tip" [label="rebuild" color=yellow]
 
        # patch flow
        "intel-gfx" [label="intel-gfx mailing list"]

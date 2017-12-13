@@ -136,7 +136,7 @@ flow of the commits to drm-upstream and Linus' tree.
 .. image:: drm-intel-flow.svg
 
 Legend: Green = Linus. Red = drm-upstream. Blue = drm-intel. Black = patches.
-Yellow = Additional trees from other subsystems.
+Yellow = Additional trees from/shared with other subsystems.
 
 Features
 --------
