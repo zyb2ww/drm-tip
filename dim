@@ -517,12 +517,23 @@ function pull_rerere_cache
 	fi
 
 	if ! git pull -q ; then
-		echoerr "Failed to update the rerere cache."
-		echoerr "Please manually run"
-		echoerr "	$ cd $DIM_PREFIX/drm-rerere ; git pull"
-		echoerr "and fixup any issues."
+		# We raced with someone else hitting the same conflict, or the
+		# erratic git gc for rr-cache entries nuke a few entries we
+		# still want to keep. Clean up and try, but only when the
+		# initial pull fails since otherwise there's no way to keep new
+		# resolutions around.
+		echo "Conflict in the rr-cache, cleaning up"
+		git clean -fdx rr-cache/
+		git checkout -f ':(glob)rr-cache/**'
 
-		return 1
+		if ! git pull -q ; then
+			echoerr "Failed to update the rerere cache."
+			echoerr "Please manually run"
+			echoerr "	$ cd $DIM_PREFIX/drm-rerere ; git pull"
+			echoerr "and fixup any issues."
+
+			return 1
+		fi
 	fi
 	cd - > /dev/null
 }
