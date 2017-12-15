@@ -508,11 +508,14 @@ function rr_cache_dir
 	fi
 }
 
-function update_rerere_cache
+function pull_rerere_cache
 {
-	echo -n "Updating rerere cache... "
-
 	cd $DIM_PREFIX/drm-rerere/
+	if ! git_is_current_branch rerere-cache; then
+		echo "Fail: Branch setup for the rerere-cache is borked."
+		exit 1
+	fi
+
 	if ! git pull -q ; then
 		echoerr "Failed to update the rerere cache."
 		echoerr "Please manually run"
@@ -521,14 +524,21 @@ function update_rerere_cache
 
 		return 1
 	fi
+	cd - > /dev/null
+}
+
+function update_rerere_cache
+{
+	echo -n "Updating rerere cache... "
+
+	pull_rerere_cache
+
 	if [ ! -L $(rr_cache_dir) ] ; then
 		if [ -d $(rr_cache_dir) ] ; then
 			rm -Rf $(rr_cache_dir)
 		fi
 		ln -s "$DIM_PREFIX/drm-rerere/rr-cache" $(dirname $(rr_cache_dir))
 	fi
-
-	cd - > /dev/null
 
 	echo "Done."
 }
@@ -537,24 +547,13 @@ function commit_rerere_cache
 {
 	local remote file commit_message
 
-	echo -n "Updating rerere cache... "
+	echo -n "Finalizing rerere cache... "
 
 	cd $DIM_PREFIX/drm-rerere/
-	if ! git_is_current_branch rerere-cache; then
-		echo "Fail: Branch setup for the rerere-cache is borked."
-		exit 1
-	fi
-
 	remote=$(branch_to_remote rerere-cache)
 
-	if ! git pull -q; then
-		echoerr "Failed to update the rerere cache."
-		echoerr "Please manually run"
-		echoerr "	$ cd $DIM_PREFIX/drm-rerere; git pull"
-		echoerr "and fixup any issues."
+	pull_rerere_cache
 
-		return 1
-	fi
 	git add ./*.patch >& /dev/null || true
 	git add fixups/*.patch >& /dev/null || true
 	for file  in $(git ls-files -- rr-cache); do
