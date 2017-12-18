@@ -17,14 +17,19 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
+CFLAGS = -O2 -g -Wextra
+
 .PHONY: all
-all: drm-intel.html dim.html drm-misc.html
+all: drm-intel.html dim.html drm-misc.html remap-log
 
 %.svg: %.dot
 	dot -T svg -o $@ $<
 
 %.html: %.rst
 	rst2html $< > $@
+
+remap-log: remap-log.c
+		$(CC) $(CFLAGS) -o $@ $<
 
 drm-intel.html: drm-intel.rst drm-intel-flow.svg drm-intel-timeline.rst drm-intel-timeline.json
 

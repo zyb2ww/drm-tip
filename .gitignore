@@ -1,6 +1,7 @@
 _build
 drm-intel-flow.svg
 drm-misc-commit-flow.svg
+remap-log
 *.html
 .*
 *~
