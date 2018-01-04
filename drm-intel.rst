@@ -61,16 +61,15 @@ Labeling Fixes Before Pushing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To label fixes that should be cherry-picked to the current -rc development
-kernel or drm-next, the commit message should contain either:
+kernel or drm-next, the commit message should have the 'Fixes:' tag.
 
-	Cc: drm-intel-fixes@lists.freedesktop.org
-
-or, if the fix is relevant for a released kernel,
+If the fix is relevant for a released kernel please also
 
 	Cc: stable@vger.kernel.org
 
-If your patch fixes a regression then please include a Fixes: line to help
-maintainers where to cherry-pick a patch to. This also extremely useful for
+'Fixes:' tag needs to added to any patch fixing a regression or an incorrect
+behavior from previous patches. This tag help maintainers and tools to decide
+where to cherry-pick a patch to. This also extremely useful for
 product groups to know which bugfixes they must include. To follow the
 recommended format please generate the Fixes: line using ::
 
@@ -85,10 +84,9 @@ patch.
 The maintainers will cherry-pick labeled patches from drm-intel-next-queued to
 the appropriate branches.
 
-If possible, the commit message should also contain a Fixes: tag as described in
+'Fixes:' tag is described in
 `Documentation/process/submitting-patches
-<https://01.org/linuxgraphics/gfx-docs/drm/process/submitting-patches.html>`_
-to aid the maintainers in identifying the right branch.
+<https://01.org/linuxgraphics/gfx-docs/drm/process/submitting-patches.html>`_.
 
 Requesting Fixes Cherry-Pick Afterwards
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,16 +97,12 @@ fix needing to be backported.
 If the patch is already in Linus' tree, please follow `stable kernel rules
 <https://01.org/linuxgraphics/gfx-docs/drm/process/stable-kernel-rules.html>`_.
 
-Otherwise, send an email to intel-gfx@lists.freedesktop.org and
-drm-intel-fixes@lists.freedesktop.org containing the subject of the patch, the
-commit id, why you think it should be applied, and what branch you wish it to be
-applied to.
+Otherwise, send an email to intel-gfx@lists.freedesktop.org containing the subject of the patch, the commit id, why you think it should be applied, and what branch you wish it to be applied to.
 
-Replying to the original patch is also fine, but please do remember to add Cc:
-drm-intel-fixes@lists.freedesktop.org and the commit id.
+Replying to the original patch is also fine, but please mention the commit id.
 
 Alternatively, if the cherry-pick has conflicts, please send a patch to
-intel-gfx@lists.freedesktop.org and drm-intel-fixes@lists.freedesktop.org with
+intel-gfx@lists.freedesktop.org with
 subject prefix "drm-intel-fixes PATCH" or "drm-intel-next-fixes PATCH" depending
 on the branch. Please add 'git cherry-pick -x' style annotation above your
 Signed-off-by: line in the commit message:
