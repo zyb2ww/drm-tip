@@ -631,8 +631,8 @@ function dim_rebuild_tip
 	rerere=$DIM_PREFIX/drm-rerere
 
 	cd $rerere
-	if git status --porcelain | grep -q -v "^[ ?][ ?]"; then
-		warn_or_fail "integration configuration file $integration_config not commited"
+	if git status --porcelain | grep -v "^.. rr-cache" | grep -q -v "^[ ?][ ?]"; then
+		warn_or_fail "integration configuration file $integration_config not committed"
 	fi
 
 	update_rerere_cache
