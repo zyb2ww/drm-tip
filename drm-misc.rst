@@ -175,7 +175,7 @@ Maintainer's Duties
 
 Maintainers mostly provide services to keep drm-misc running smoothly:
 
-* Coordinate cross-subsystem depencies and handle topic branches, sending out
+* Coordinate cross-subsystem dependencies and handle topic branches, sending out
   pull request and merging topic pull requests from other subsystems.
 
 * At least once per week check for pending bugfixes (using ``dim status``) and
@@ -194,7 +194,7 @@ Maintainers mostly provide services to keep drm-misc running smoothly:
   setting the `upstream` argument for ``dim pull-request`` accordingly.
   Upstream should be warned that they haven't fast-forwarded yet.
 
-* During the merge-windo blackout, i.e. from -rc6 on until the merge window
+* During the merge-window blackout, i.e. from -rc6 on until the merge window
   closes with the release of -rc1, try to track `drm-next` with the
   `-next-fixes` branch. Do not advance past -rc1, otherwise the automagic in
   the scripts will push the wrong patches to the linux-next tree.
