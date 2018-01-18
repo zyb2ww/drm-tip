@@ -51,11 +51,11 @@ cherry-picking is not the default.
 drm-misc-next-fixes
 ~~~~~~~~~~~~~~~~~~~
 
-This branch is only relevant between rc6 of the current kernel version (X) and
-rc1 of the next (X+1). This is the feature freeze period mentioned above in the
-drm-misc-next section. During this time, drm-misc-next will roll over to target
-kernel version X+2, and drm-misc-fixes will still be on kernel version X, so
-drm-misc-next-fixes is used for fixes that target X+1.
+During the time between rc6 of kernel version X and rc1 of X+1,
+drm-misc-next will be targeting kernel version X+2 and drm-misc-fixes
+still targets kernel version X.  This branch is for fixes to bugs
+introduced in the drm-misc-next pull request that was sent for X+1,
+which aren't present in the drm-misc-fixes branch.
 
 See the timeline below for a visualization of patch flow.
 
