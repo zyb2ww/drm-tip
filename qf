@@ -437,7 +437,6 @@ qf_alias_wp=wiggle_push
 function qf_wiggle_push
 {
 	cd_toplevel
-	repo_check 1
 
 	conflict_files=$(quilt push -f | grep "saving rejects" | sed -e "s/.*saving rejects to file \(.*\)/\1/")
 
