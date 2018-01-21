@@ -279,13 +279,14 @@ QUILT_PREFIX
 Quilt branch prefix. This is a prefix for the git branch that contains the
 patch files and quilt series file.
 
-CONTRIBUTING
-============
+CONTRIBUTING, BUG REPORTS AND DISCUSSION
+========================================
 
-Submit patches for any of the maintainer tools to
-intel-gfx@lists.freedesktop.org with [maintainer-tools PATCH] prefix. Use
+Submit patches, bug reports, and questions for any of the maintainer tools and
+documentation to the dim-tools@lists.freedesktop.org mailing list.
 
-$ git format-patch --subject-prefix="maintainer-tools PATCH"
+Please make sure your patches pass the build and self tests by running::
 
-for that. Push them once you have
-an ack from maintainers (Jani/Daniel).
+  $ make check
+
+Push the patches once you have an ack from maintainers (Jani/Daniel).
