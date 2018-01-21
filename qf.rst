@@ -208,7 +208,7 @@ resolution can be cross-checked.
 resolved
 --------
 Little helper when a patch conflict was resolved. First
-refreshes the topmost patch, then fires up vim to edit the
+refreshes the topmost patch, then fires up $EDITOR to edit the
 headers.
 
 apply *patch-name*
