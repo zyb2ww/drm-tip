@@ -413,12 +413,7 @@ function qf_pull
 
 	qf fetch
 	cd patches
-
-	if [[ $1 == "--rebase" ]] ; then
-		git rebase "@{upstream}"
-	else
-		git merge "@{upstream}"
-	fi
+	git pull --ff-only
 
 	qf co
 }

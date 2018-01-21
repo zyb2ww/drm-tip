@@ -186,12 +186,12 @@ fetch
 Fetches both the main and patches barnch remotes and pulls all
 the baseline refs into the main repo.
 
-pull [--rebase]
----------------
+pull
+----
 
-First runs qf fetch and then updates the patches branch (with a git merge) and
-the checks out the latest working copy. When given --rebase will rebase the
-patches branch instead of merging.
+First runs qf fetch, then updates the patches branch, and
+then checks out the latest working copy.
+If fails if the patches branch can't be fast forwarded.
 
 stage
 -----
