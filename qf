@@ -74,7 +74,7 @@ function quiet_pop_all
 	quilt pop -a -q "$@" > /dev/null || test $? = 2
 }
 
-function repo_check # allow-detached
+function repo_start # allow-detached
 {
 	cd patches
 	quilt_branch=$(git rev-parse --abbrev-ref HEAD)
@@ -98,6 +98,11 @@ function repo_check # allow-detached
 
 	# shellcheck source=/dev/null
 	baseline=$(source patches/config ; echo ${BASELINE:-})
+}
+
+function repo_check # allow-detached
+{
+	repo_start $1
 
 	if [[ $(git rev-parse HEAD) != "$baseline" ]] ; then
 		echo Baseline commit doesn\'t match with quilt config
@@ -393,7 +398,7 @@ function qf_push
 function qf_fetch
 {
 	cd_toplevel
-	repo_check 0
+	repo_start 0
 
 	remote=$(git config branch.$branch.remote)
 
@@ -409,7 +414,6 @@ function qf_fetch
 function qf_pull
 {
 	cd_toplevel
-	repo_check 0
 
 	qf fetch
 	cd patches
