@@ -404,11 +404,17 @@ function qf_pull
 {
 	cd_toplevel
 
-	qf fetch
+	qf_fetch
 	cd patches
-	git pull --ff-only
 
-	qf co
+	if [[ $FORCE ]]; then
+		git reset --hard $(git rev-parse --abbrev-ref @{u})
+	else
+		git pull --ff-only
+		qf_co
+	fi
+
+	cd ..
 }
 
 function qf_stage
@@ -586,6 +592,19 @@ function qf_usage
 	echo
 	echo "See '$qf help' for more information."
 }
+
+FORCE=
+while getopts f opt; do
+	case "$opt" in
+		f)
+			FORCE=1
+			;;
+		*)
+			echo "See '$qf help' for more information."
+			exit
+	esac
+done
+shift $((OPTIND - 1))
 
 # qf subcommand aliases (with bash 4.3+)
 if ! declare -n subcmd=qf_alias_${subcommand//-/_} &> /dev/null || \
