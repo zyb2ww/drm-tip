@@ -400,15 +400,13 @@ function qf_fetch
 	cd_toplevel
 	repo_start 0
 
-	remote=$(git config branch.$branch.remote)
+	# Fetch all relevant remotes out of patches dir first.
+	git fetch --all
 
+	remote=$(git config branch.$branch.remote)
 	cd patches
 	git fetch $remote
 	cd ..
-
-	git fetch $remote
-
-	git fetch $remote
 }
 
 function qf_pull
