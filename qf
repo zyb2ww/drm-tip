@@ -259,7 +259,7 @@ function qf_checkout
 function qf_rebase
 {
 	cd_toplevel
-	repo_check 0
+	repo_start 0
 
 	if [[ -z $1 ]] ; then
 		echo No commit given
@@ -269,7 +269,7 @@ function qf_rebase
 	new_baseline=$(git rev-parse $1)
 
 	current_top=$(quilt top)
-	quiet_pop_all
+	quiet_pop_all -f
 	echo Resetting baseline to $new_baseline
 	git reset --hard $new_baseline
 	sed -e "s/BASELINE=.*$/BASELINE=$new_baseline/" -i patches/config
