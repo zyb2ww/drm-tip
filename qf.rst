@@ -200,6 +200,22 @@ Resets the git index and then (re-)applies all currently applied
 quilt patches to it. Useful to use git tools like git diff to
 compare changes against the quilt patch state.
 
+conflict-files
+--------------
+List the files that are probably in a unresolved stage of conflict.
+Wiggle push will leave .rej and .porig files behind.
+This is useful for manual conflict solving during the quilt rebase.
+
+continue
+--------
+Clean up after wiggle and continue with quilt push -a to continue
+applying and rebasing all the following patches.
+
+wiggle-clean
+------------
+Clean up all .rej and .porig files that wiggle probably
+left behind.
+
 wiggle-push|wp
 --------------
 Force-push the next patch and then wiggle in any conflicts. Does

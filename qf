@@ -421,6 +421,39 @@ function qf_stage
 	echo All applied patches successfully staged
 }
 
+function qf_wiggle_clean
+{
+	cd_toplevel
+	conflict_files=$(git status -u --porcelain=2 -- '*.rej' | grep -E "^?" | cut -d' ' -f2)
+
+	for file in $conflict_files ; do
+		echo cleaning $file ${file%.rej}.porig
+		rm -f $file ${file%.rej}.porig
+	done
+}
+
+function qf_conflict_files
+{
+	cd_toplevel
+	conflict_files=$(git status -u --porcelain=2 -- '*.rej' | grep -E "^?" | cut -d' ' -f2)
+
+	if [[ -z $conflict_files ]] ; then
+		echo No conflicted files found!
+	else
+		echo Conflict found on:
+		for file in $conflict_files ; do
+			echo ${file%.rej}
+		done
+	fi
+}
+
+function qf_continue
+{
+	cd_toplevel
+	qf_wiggle_clean
+	quilt push -a
+}
+
 qf_alias_wp=wiggle_push
 function qf_wiggle_push
 {
