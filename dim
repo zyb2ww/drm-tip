@@ -1486,7 +1486,7 @@ function dim_sparse
 
         echo "Commit: $(git log -n1 --format='%s' $commit)"
         if [ -n "$diff_result" ]; then
-            echo "$diff_result" | egrep '^[+-]' | egrep -v '^[+-]{3}'
+            echo "$diff_result" | grep -E '^[+-]' | grep -E -v '^[+-]{3}'
         else
             echo "Okay!"
         fi
