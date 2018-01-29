@@ -160,3 +160,12 @@ This is the overall integration tree for drm, and lives in
 is updated drm-tip gets rebuilt. If there's a conflict see section on `resolving
 conflicts when rebuilding drm-tip
 <drm-intel.html#resolving-conflicts-when-rebuilding-drm-tip>`_.
+
+drm-rerere
+~~~~~~~~~~
+
+This branch contains the `nightly.conf`_ configuration file and the shared ``git
+rerere`` conflict resolutions for dim to generate drm-tip, as well as some
+kernel defconfig files for build testing.
+
+.. _nightly.conf: https://cgit.freedesktop.org/drm/drm-tip/plain/nightly.conf?h=rerere-cache
