@@ -31,47 +31,7 @@ guide.
 Branches
 ========
 
-All branches are maintained in `git://anongit.freedesktop.org/drm-misc`.
-
-drm-misc-next
-~~~~~~~~~~~~~
-
-This is the main feature branch where most of the patches land. This branch is
-always open to "hide" the merge window from developers. To avoid upsetting
-linux-next and causing mayhem in the merge window, in general no pull requests
-are sent to upstream after rc6 of the current kernel release. Outside of that
-feature freeze period, pull requests are sent to upstream roughly every 1-2
-weeks, to avoid too much coordination pains. See the timeline below for a
-visualization of patch flow.
-
-If you're unsure, apply your patch here, it can always be cherry-picked to one
-of the -fixes branches later on. But in contrast to the drm-intel flow
-cherry-picking is not the default.
-
-drm-misc-next-fixes
-~~~~~~~~~~~~~~~~~~~
-
-During the time between rc6 of kernel version X and rc1 of X+1,
-drm-misc-next will be targeting kernel version X+2 and drm-misc-fixes
-still targets kernel version X.  This branch is for fixes to bugs
-introduced in the drm-misc-next pull request that was sent for X+1,
-which aren't present in the drm-misc-fixes branch.
-
-See the timeline below for a visualization of patch flow.
-
-drm-misc-fixes
-~~~~~~~~~~~~~~
-
-This is for bugfixes which target the current -rc cycle.
-
-drm-tip
-~~~~~~~
-
-This is the overall integration tree for drm, and lives in
-`git://anongit.freedesktop.org/drm-tip`. Every time one of the above branches is
-updated drm-tip gets rebuilt. If there's a conflict see section on `resolving
-conflicts when rebuilding drm-tip
-<drm-intel.html#resolving-conflicts-when-rebuilding-drm-tip>`_.
+See :ref:`drm-misc-repository`.
 
 Where Do I Apply My Patch?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

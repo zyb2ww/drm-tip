@@ -22,6 +22,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   repositories
    drm-misc
    drm-intel
    dim
