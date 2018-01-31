@@ -1215,6 +1215,10 @@ function dim_create_branch
 	fi
 
 	remote=$(repo_to_remote $repo)
+	if [[ $(git branch -r | grep "$remote/$branch") ]]; then
+		echoerr "$branch already exists on $remote"
+		return 1
+	fi
 
 	$DRY git branch $branch $start
 	git push $DRY_RUN $remote +$branch --set-upstream
