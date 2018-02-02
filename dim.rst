@@ -408,14 +408,20 @@ When **update-next** fails to push the special release commit (because it raced 
 another committer) rebase and push manually, and then continue using this
 command.
 
-tag-next
---------
-Pushes a new tag for the current drm-intel-next state after checking that the
-remote is up-to-date. Useful if drm-intel-next has been changed since the last
-run of the update-next command (e.g. to apply a hotfix before sending out the
-pull request).
+tag-branch *branch*
+-------------------
+Pushes a new tag for the specified branch after checking that the remote is 
+up-to-date.
 
 The tag will be signed using the key specified by \$DIM_GPG_KEYID, if set.
+
+tag-next
+--------
+**tag-branch** shorthand for drm-intel-next.
+
+Useful if drm-intel-next has been changed since the last run of the
+update-next command (e.g. to apply a hotfix before sending out the pull request).
+
 
 DIM HELP COMMANDS
 =================

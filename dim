@@ -1718,26 +1718,32 @@ function dim_update_next_continue
 	     -i $req_file "${test_request_recipients[@]}"
 }
 
-function dim_tag_next
+function dim_tag_branch
 {
-	local intel_remote tag
+	local branch remote tag
+
+	branch=$1
+	remote=$(branch_to_remote $branch)
 
 	cd $DIM_PREFIX/$DIM_REPO
 
-	intel_remote=$(repo_to_remote drm-intel)
-	git fetch $intel_remote
+	git fetch $remote
 
-	if [ $(git rev-parse drm-intel-next) == $(git rev-parse "drm-intel-next@{u}") ] ; then
-		echo "Tagging current drm-intel-next"
+	if [ $(git rev-parse $branch) == $(git rev-parse "$branch@{u}") ] ; then
+		echo "Tagging current $branch"
 
-		tag=$(tag_name "drm-intel-next")
-		tag_branch $tag drm-intel-next
-		git push $DRY_RUN $intel_remote $tag
+		tag=$(tag_name "$branch")
+		tag_branch $tag $branch
+		git push $DRY_RUN $remote $tag
 	else
-		echo "drm-intel-next not up-to-date, aborting"
+		echo "$branch not up-to-date, aborting"
 		exit
 	fi
+}
 
+function dim_tag_next
+{
+	dim_tag_branch "drm-intel-next"
 }
 
 # dim_pull_request branch upstream
