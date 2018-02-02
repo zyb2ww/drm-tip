@@ -1604,6 +1604,38 @@ function dim_for_each_workdir
 	done
 }
 
+function tag_summary # branch
+{
+	local branch tag_template
+	branch=$1
+	tag_template=$DIM_PREFIX/drm-rerere/tag-templates/${branch//\//-}.txt
+
+	if [ -r $tag_template ]; then
+		cat $tag_template
+	else
+		cat <<-EOF
+		UAPI Changes:
+
+		Cross-subsystem Changes:
+
+		Core Changes:
+
+		Driver Changes:
+
+		EOF
+	fi
+}
+
+function tag_branch
+{
+	local tag branch
+	tag=$1
+	branch=$2
+
+	tag_summary $branch | $DRY git tag -F- $tag "$branch@{upstream}"
+	$DRY git tag -a $DIM_GPG_KEYID -f $tag
+}
+
 function dim_update_next
 {
 	local remote
@@ -1704,38 +1736,6 @@ function dim_tag_next
 		exit
 	fi
 
-}
-
-function tag_summary # branch
-{
-	local branch tag_template
-	branch=$1
-	tag_template=$DIM_PREFIX/drm-rerere/tag-templates/${branch//\//-}.txt
-
-	if [ -r $tag_template ]; then
-		cat $tag_template
-	else
-		cat <<-EOF
-		UAPI Changes:
-
-		Cross-subsystem Changes:
-
-		Core Changes:
-
-		Driver Changes:
-
-		EOF
-	fi
-}
-
-function tag_branch
-{
-	local tag branch
-	tag=$1
-	branch=$2
-
-	tag_summary $branch | $DRY git tag -F- $tag "$branch@{upstream}"
-	$DRY git tag -a $DIM_GPG_KEYID -f $tag
 }
 
 # dim_pull_request branch upstream
