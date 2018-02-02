@@ -1604,6 +1604,17 @@ function dim_for_each_workdir
 	done
 }
 
+function tag_name
+{
+	local prefix suffix tag
+	prefix=$1
+	tag="$prefix-$dim_today"
+	while git tag -l $tag | grep -q $tag ; do
+		tag="$prefix-$dim_today-$((++suffix))"
+	done
+	echo "$tag"
+}
+
 function tag_summary # branch
 {
 	local branch tag_template
@@ -1673,7 +1684,7 @@ function dim_update_next
 
 function dim_update_next_continue
 {
-	local remote intel_remote req_file suffix tag tag_testing
+	local remote intel_remote req_file tag tag_testing
 
 	assert_branch drm-intel-next-queued
 
@@ -1681,13 +1692,8 @@ function dim_update_next_continue
 	remote=$(repo_to_remote drm-tip)
 
 	git push $DRY_RUN -f $intel_remote drm-intel-next-queued:drm-intel-next
-	tag=drm-intel-next-$dim_today
-	tag_testing=drm-intel-testing-$dim_today
-
-	while git tag -l $tag | grep -q $tag ; do
-		tag="drm-intel-next-$dim_today-$((++suffix))"
-		tag_testing="drm-intel-testing-$dim_today-$((++suffix))"
-	done
+	tag=$(tag_name "drm-intel-next")
+	tag_testing="${tag/next/testing}"
 
 	tag_branch $tag drm-intel-next
 	git push $DRY_RUN $intel_remote $tag
@@ -1714,7 +1720,7 @@ function dim_update_next_continue
 
 function dim_tag_next
 {
-	local intel_remote tag suffix
+	local intel_remote tag
 
 	cd $DIM_PREFIX/$DIM_REPO
 
@@ -1724,11 +1730,7 @@ function dim_tag_next
 	if [ $(git rev-parse drm-intel-next) == $(git rev-parse "drm-intel-next@{u}") ] ; then
 		echo "Tagging current drm-intel-next"
 
-		tag=drm-intel-next-$dim_today
-		while git tag -l $tag | grep -q $tag ; do
-			tag="drm-intel-next-$dim_today-$((++suffix))"
-		done
-
+		tag=$(tag_name "drm-intel-next")
 		tag_branch $tag drm-intel-next
 		git push $DRY_RUN $intel_remote $tag
 	else
@@ -1741,7 +1743,7 @@ function dim_tag_next
 # dim_pull_request branch upstream
 function dim_pull_request
 {
-	local branch upstream remote repo req_file url_list git_url suffix tag
+	local branch upstream remote repo req_file url_list git_url tag
 
 	branch=${1:?$usage}
 	upstream=${2:?$usage}
@@ -1765,11 +1767,7 @@ function dim_pull_request
 
 		repo="drm-intel"
 	else
-		tag=$branch-$dim_today
-
-		while git tag -l $tag | grep -q $tag ; do
-			tag="$branch-$dim_today-$((++suffix))"
-		done
+		tag=$(tag_name "$branch")
 		gitk "$branch@{upstream}" ^$upstream &
 		tag_branch $tag $branch
 		$DRY git push $remote $tag
