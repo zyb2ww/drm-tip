@@ -35,11 +35,11 @@ QUICKSTART
 
 For getting started grab the latest dim (drm-intel-maintainer) script from::
 
-    http://cgit.freedesktop.org/drm-intel/tree/dim?h=maintainer-tools
+    http://cgit.freedesktop.org/drm-tip/tree/dim?h=maintainer-tools
 
 There's also a sample config file for ~/.dimrc::
 
-    http://cgit.freedesktop.org/drm-intel/tree/dimrc.sample?h=maintainer-tools
+    http://cgit.freedesktop.org/drm-tip/tree/dimrc.sample?h=maintainer-tools
 
 Plus, there's bash completion in the same directory if you feel like using that.
 Run::

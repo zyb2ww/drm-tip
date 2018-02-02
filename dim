@@ -131,6 +131,12 @@ function read_integration_config
 			dim_branches="$dim_branches $branch"
 		fi
 	done
+
+	#this is a bit a hack
+	(
+	 cd $DIM_PREFIX/maintainer-tools;
+	 git config --replace-all  branch.maintainer-tools.remote $(repo_to_remote drm-tip)
+	)
 }
 
 function echoerr
@@ -1933,9 +1939,8 @@ function setup_aux_checkout # name url directory
 
 function dim_setup
 {
-	local remote drm_intel_ssh drm_tip_ssh drm_upstream_git linux_upstream_git
+	local remote drm_tip_ssh drm_upstream_git linux_upstream_git
 
-	drm_intel_ssh=ssh://git.freedesktop.org/git/drm-intel
 	drm_tip_ssh=ssh://git.freedesktop.org/git/drm-tip
 	drm_upstream_git=git://people.freedesktop.org/~airlied/linux
 	linux_upstream_git=git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
@@ -1960,7 +1965,7 @@ function dim_setup
 
 	cd $DIM_PREFIX
 
-	setup_aux_checkout maintainer-tools $drm_intel_ssh maintainer-tools
+	setup_aux_checkout maintainer-tools $drm_tip_ssh maintainer-tools
 
 	setup_aux_checkout rerere-cache $drm_tip_ssh drm-rerere
 
@@ -2144,7 +2149,7 @@ function dim_help
 	if [ ! -e "$manpage" ]; then
 		manpage=$(dirname $(readlink -f $0))/dim.rst
 		if [ ! -e "$manpage" ]; then
-			echo "Can't find the man page. See http://cgit.freedesktop.org/drm-intel/tree/dim.rst?h=maintainer-tools"
+			echo "Can't find the man page. See http://cgit.freedesktop.org/drm-tip/tree/dim.rst?h=maintainer-tools"
 			exit 1
 		fi
 	fi

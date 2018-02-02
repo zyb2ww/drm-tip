@@ -145,11 +145,6 @@ This is the fastest path to getting fixes to Linus' tree. It is generally for
 the regressions, cc:stable, black screens, GPU hangs only, and should pretty
 much follow the stable rules.
 
-maintainer-tools
-~~~~~~~~~~~~~~~~
-
-This branch contains all the tools and documentation you're reading about.
-
 The DRM Testing and Integration Repository
 ------------------------------------------
 
@@ -174,3 +169,8 @@ rerere`` conflict resolutions for dim to generate drm-tip, as well as some
 kernel defconfig files for build testing.
 
 .. _nightly.conf: https://cgit.freedesktop.org/drm/drm-tip/plain/nightly.conf?h=rerere-cache
+
+maintainer-tools
+~~~~~~~~~~~~~~~~
+
+This branch contains all the tools and documentation you're reading about.
