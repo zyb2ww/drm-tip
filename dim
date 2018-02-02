@@ -131,12 +131,6 @@ function read_integration_config
 			dim_branches="$dim_branches $branch"
 		fi
 	done
-
-	#this is a bit a hack
-	(
-	 cd $DIM_PREFIX/maintainer-tools;
-	 git config --replace-all  branch.maintainer-tools.remote $(repo_to_remote drm-tip)
-	)
 }
 
 function echoerr
