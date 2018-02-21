@@ -303,9 +303,10 @@ function qf_refresh
 function qf_clean_patches
 {
 	cd_toplevel
+	cd patches
 
-	for patch in patches/{*/,/}*.patch ; do
-		if grep "^${patch##patches/}$" patches/series &> /dev/null ; then
+	for patch in $(git ls-files '*.patch') ; do
+		if grep "^${patch}$" series &> /dev/null ; then
 			continue
 		fi
 		echo No reference to $patch, deleting it.
@@ -479,9 +480,10 @@ function qf_patch_amend
 function qf_list_unused_patches
 {
 	cd_toplevel
+	cd patches
 
-	for patch in patches/{*/,/}*.patch ; do
-		if ! grep "^${patch#patches/}$" patches/series > /dev/null ; then
+	for patch in $(git ls-files '*.patch'); do
+		if ! grep "^${patch}$" series > /dev/null ; then
 			if [[ "$1" != --purge ]] ; then
 				echo $patch
 			else
