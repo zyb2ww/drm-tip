@@ -302,16 +302,7 @@ function qf_refresh
 
 function qf_clean_patches
 {
-	cd_toplevel
-	cd patches
-
-	for patch in $(git ls-files '*.patch') ; do
-		if grep "^${patch}$" series &> /dev/null ; then
-			continue
-		fi
-		echo No reference to $patch, deleting it.
-		rm $patch
-	done
+	qf_list_unused_patches --purge
 }
 
 function qf_export

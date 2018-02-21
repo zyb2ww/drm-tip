@@ -152,7 +152,8 @@ patches/config.
 
 clean-patches
 -------------
-Removes all unused patch files from the patches/ directory.
+Removes all unused patch files from the patches/ directory. This
+is the same as calling "qf list-unused-patches --purge".
 
 refresh
 -------
