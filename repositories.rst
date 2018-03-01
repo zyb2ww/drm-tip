@@ -64,7 +64,7 @@ The DRM Misc Repository
 See drm-misc_ for repository details. Maintained by Daniel Vetter, Gustavo
 Padovan, and Sean Paul, with a large pool of committers.
 
-.. _drm-misc: https://cgit.freedesktop.org/drm/drm-tip
+.. _drm-misc: https://cgit.freedesktop.org/drm/drm-misc
 
 drm-misc-next
 ~~~~~~~~~~~~~
@@ -103,7 +103,7 @@ See drm-intel_ for repository details. Maintained by Jani Nikula, Joonas
 Lahtinen and Rodrigo Vivi, with a large pool of committers. Consists mostly of
 ``drivers/gpu/drm/i915``.
 
-.. _drm-intel: https://cgit.freedesktop.org/drm/drm-tip
+.. _drm-intel: https://cgit.freedesktop.org/drm/drm-intel
 
 drm-intel-next-queued (aka "dinq")
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
