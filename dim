@@ -1362,7 +1362,7 @@ function checkpatch_commit
 	cmd="git show --pretty=email $commit"
 
 	git --no-pager log --oneline -1 $commit
-	if ! $cmd | scripts/checkpatch.pl -q --emacs --strict -; then
+	if ! $cmd | scripts/checkpatch.pl -q --emacs --strict --show-types -; then
 		rv=1
 	fi
 
