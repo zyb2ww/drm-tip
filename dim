@@ -1422,7 +1422,6 @@ function dim_extract_next_fixes
 	dim_extract_tags drm-intel-next-fixes "$@"
 }
 
-dim_alias_check_patch=checkpatch
 dim_alias_cp=checkpatch
 function dim_checkpatch
 {
