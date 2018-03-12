@@ -268,8 +268,8 @@ function qf_rebase
 
 	new_baseline=$(git rev-parse $1)
 
-	current_top=$(quilt top)
-	quiet_pop_all -f
+	current_top=$(quilt top || echo "-a")
+	quiet_pop_all
 	echo Resetting baseline to $new_baseline
 	git reset --hard $new_baseline
 	sed -e "s/BASELINE=.*$/BASELINE=$new_baseline/" -i patches/config
@@ -409,6 +409,7 @@ function qf_pull
 
 	if [[ $FORCE ]]; then
 		git reset --hard $(git rev-parse --abbrev-ref @{u})
+		quiet_pop_all -f
 	else
 		git pull --ff-only
 		qf_co
