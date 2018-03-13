@@ -836,7 +836,7 @@ function apply_patch #patch_file
 		rv=1
 	fi
 
-	if ! checkpatch_commit HEAD; then
+	if ! checkpatch_commit HEAD branch; then
 		rv=1
 	fi
 	if ! check_maintainer $branch HEAD; then
@@ -1358,12 +1358,47 @@ function check_maintainer
 }
 
 # $1 is the git sha1 to check
+# $2 is the checkpatch profile
 function checkpatch_commit
 {
-	local commit rv checkpatch_options
+	local commit rv checkpatch_options profile profile_options
 
 	commit=$1
-	checkpatch_options="-q --emacs --strict --show-types -"
+	profile=${2:-default}
+
+	# special branch profile maps branches to profiles
+	if [[ "$profile" = "branch" ]]; then
+		case "$(git_current_branch)" in
+			drm-intel-next-queued|drm-intel-next-fixes|drm-intel-fixes)
+				profile=drm-intel
+				;;
+			drm-misc-next|drm-misc-next-fixes|drm-misc-fixes)
+				profile=drm-misc
+				;;
+			*)
+				profile=default
+				;;
+		esac
+	fi
+
+	# map profiles to checkpatch options
+	case "$profile" in
+		default)
+			profile_options=""
+			;;
+		drm-misc)
+			profile_options=""
+			;;
+		drm-intel)
+			profile_options=""
+			;;
+		*)
+			echoerr "Unknown checkpatch profile $profile"
+			profile_options=""
+			;;
+	esac
+
+	checkpatch_options="-q --emacs --strict --show-types $profile_options -"
 
 	git --no-pager log --oneline -1 $commit
 	if ! git show --pretty=email $commit |\
@@ -1430,12 +1465,13 @@ function dim_extract_next_fixes
 dim_alias_cp=checkpatch
 function dim_checkpatch
 {
-	local range rv
+	local range profile rv
 
 	range=$(rangeish "${1:-}")
+	profile=${2:-}
 
 	for commit in $(git rev-list --reverse $range); do
-		if ! checkpatch_commit $commit; then
+		if ! checkpatch_commit $commit $profile; then
 			rv=1
 		fi
 	done

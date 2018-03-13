@@ -130,12 +130,17 @@ fixes *commit-ish*
 Print the Fixes: and Cc: lines for the supplied *commit-ish* in the linux kernel
 CodingStyle approved format.
 
-checkpatch [*commit-ish* [.. *commit-ish*]]
--------------------------------------------
+checkpatch [*commit-ish* [.. *commit-ish*]] [*profile*]
+-------------------------------------------------------
 Runs the given commit range commit-ish..commit-ish through the check tools.
 
 If no commit-ish is passed, defaults to HEAD^..HEAD. If one commit-ish is passed
 instead of a range, the range commit-ish..HEAD is used.
+
+If profile is given, uses specific options for checkpatch error
+filtering. Current profiles are "default", "branch", "drm-intel", and
+"drm-misc". The "branch" profile maps the current git branch to the appropriate
+profile, or if the branch is not known, to "default".
 
 sparse [*commit-ish* [.. *commit-ish*]]
 ---------------------------------------
