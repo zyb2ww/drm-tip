@@ -1360,13 +1360,14 @@ function check_maintainer
 # $1 is the git sha1 to check
 function checkpatch_commit
 {
-	local commit cmd bug_lines non_i915_files rv
+	local commit rv checkpatch_options
 
 	commit=$1
-	cmd="git show --pretty=email $commit"
+	checkpatch_options="-q --emacs --strict --show-types -"
 
 	git --no-pager log --oneline -1 $commit
-	if ! $cmd | scripts/checkpatch.pl -q --emacs --strict --show-types -; then
+	if ! git show --pretty=email $commit |\
+			scripts/checkpatch.pl $checkpatch_options; then
 		rv=1
 	fi
 
