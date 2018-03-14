@@ -408,7 +408,7 @@ function qf_pull
 	cd patches
 
 	if [[ $FORCE ]]; then
-		git reset --hard $(git rev-parse --abbrev-ref @{u})
+		git reset --hard $(git rev-parse --abbrev-ref "@{u}")
 		quiet_pop_all -f
 	else
 		git pull --ff-only
