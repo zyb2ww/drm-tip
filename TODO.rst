@@ -19,6 +19,7 @@ dim
   fixed any more.
 - apply-resolved fails to add the Link: tag.
 - Harvest and add Cc labels to all authors when tagging a branch
+    (ex: https://cgit.freedesktop.org/drm-misc/tag/?h=drm-misc-next-2018-03-21)
 - Parse Cc labels from tag body and add as email headers when sending pull requests
 
 qf
