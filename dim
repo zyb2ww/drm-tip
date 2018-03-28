@@ -364,6 +364,15 @@ function git_committer_email
 	echo $committer_email
 }
 
+function git_version_check
+{
+	local min_version="git version 2.8"
+
+	if ! echo -e "$min_version\n$(git version)" | sort -VC; then
+		echoerr "WARNING: recommended minimum $min_version, you have $(git version)"
+	fi
+}
+
 # get message id from file
 # $1 = file
 message_get_id ()
@@ -2210,6 +2219,7 @@ function dim_usage
 
 # occasional check for dim updates
 check_for_updates
+git_version_check
 
 #
 # Command line options.
