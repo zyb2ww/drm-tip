@@ -1228,7 +1228,7 @@ function dim_create_branch
 	fi
 
 	remote=$(repo_to_remote $repo)
-	if [[ $(git branch -r | grep "$remote/$branch") ]]; then
+	if git branch -r | grep -q "$remote/$branch"; then
 		echoerr "$branch already exists on $remote"
 		return 1
 	fi
@@ -1423,7 +1423,7 @@ function rangeish()
 {
 	if [ -z "$1" ]; then
 		echo "HEAD^..HEAD"
-	elif [ -n "$(echo $1 | grep '\.\.')" ]; then
+	elif echo "$1" | grep -q '\.\.'; then
 		echo "$1"
 	else
 		echo "$1..HEAD"
