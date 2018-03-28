@@ -2057,6 +2057,31 @@ function dim_list_aliases
 		sed 's/^dim_alias_//;s/=/\t/;s/_/-/g'
 }
 
+# Commands that do not require full setup
+function list_developer_commands
+{
+	local -a developer_commands
+
+	developer_commands=(
+		# developer commands
+		# these should match the developer section in dim.rst
+		"checker"
+		"checkpatch"
+		"cite"
+		"fixes"
+		"retip"
+		"sparse"
+		"tc"
+		# help commands
+		"help"
+		"usage"
+		# include setup
+		"setup"
+	)
+
+	printf "%s\n" "${developer_commands[@]}"
+}
+
 function dim_cat_to_fixup # [branch]
 {
 	local fixup_file repo branch
@@ -2294,33 +2319,12 @@ if ! declare -f $subcmd_func >/dev/null; then
 	exit 1
 fi
 
-# functions useful for developers don't need a full dim setup
-developer_commands=(
-	# developer commands
-	# these should match the developer section in dim.rst
-	"tc"
-	"cite"
-	"fixes"
-	"checkpatch"
-	"sparse"
-	"checker"
-	"retip"
-	# help commands
-	"help"
-	"usage"
-	# include setup
-	"setup"
-)
-
-developer_command=0
-for cmd in "${developer_commands[@]}" ; do
-	if [ $cmd = $subcmd ] ; then
-		developer_command=1
-		break;
+# Commands useful for developers don't need a full dim setup
+if list_developer_commands | grep -qx $subcmd; then
+	if [ -r $DIM_PREFIX/drm-rerere/$integration_config ]; then
+		read_integration_config
 	fi
-done
-
-if [ $developer_command = "0" ]; then
+else
 	for d in $DIM_PREFIX $DIM_PREFIX/$DIM_REPO $DIM_PREFIX/drm-rerere $DIM_PREFIX/drm-tip; do
 		if [ ! -d $d ]; then
 			echoerr "$d is missing, please check your configuration and/or run dim setup"
@@ -2329,10 +2333,6 @@ if [ $developer_command = "0" ]; then
 	done
 
 	read_integration_config
-else
-	if [ -r $DIM_PREFIX/drm-rerere/$integration_config ]; then
-		read_integration_config
-	fi
 fi
 
 # throw away to not confuse list-aliases
