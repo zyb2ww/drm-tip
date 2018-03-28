@@ -1346,7 +1346,7 @@ function check_maintainer
 
         if [ "$branch" = "drm-intel-next-queued" ]; then
 		if non_i915_files=$(git diff-tree --no-commit-id --name-only -r $commit | \
-			grep -v "^\(drivers/gpu/drm/i915/\|include/drm/i915\|include/uapi/drm/i915\)") && [[ -n "$non_i915_files" ]]; then
+			grep -v "^\(drivers/gpu/drm/i915/\|include/drm/i915\|include/uapi/drm/i915\|Documentation/gpu/i915\)") && [[ -n "$non_i915_files" ]]; then
 			echo -e "The following files are outside of i915 maintenance scope:\n"
 			echo "$non_i915_files"
 			echo -e "\nConfirm you have appropriate Acked-by and Reviewed-by for above files."
