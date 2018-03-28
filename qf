@@ -412,7 +412,7 @@ function qf_pull
 		quiet_pop_all -f
 	else
 		git pull --ff-only
-		qf_co
+		qf_checkout
 	fi
 
 	cd ..
