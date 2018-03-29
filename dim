@@ -2296,6 +2296,14 @@ if ! declare -n subcmd=dim_alias_${subcommand//-/_} &> /dev/null || \
 	subcmd="$subcommand"
 fi
 
+# look up the function by the subcommand name
+subcmd_func=dim_${subcmd//-/_}
+if ! declare -f $subcmd_func >/dev/null; then
+	echoerr "'$subcommand' is not a dim command."
+	dim_usage
+	exit 1
+fi
+
 #
 # Sanity checks.
 #
@@ -2306,14 +2314,6 @@ if [[ -n "${__dim_running:-}" ]]; then
 	exit 1
 fi
 export __dim_running=1
-
-# look up the function by the subcommand name
-subcmd_func=dim_${subcmd//-/_}
-if ! declare -f $subcmd_func >/dev/null; then
-	echoerr "'$subcommand' is not a dim command."
-	dim_usage
-	exit 1
-fi
 
 # Commands useful for developers don't need a full dim setup
 if list_developer_commands | grep -qx $subcmd; then
