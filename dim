@@ -103,6 +103,11 @@ dim_test_request_recipients=(
 # integration configuration
 dim_integration_config=nightly.conf
 
+#
+# Only function and alias definitions until the command line argument parsing
+# and subcommand handling at the end.
+#
+
 function read_integration_config
 {
 	# clear everything first to allow configuration reload
@@ -155,10 +160,6 @@ function pause
 	read -rsp "Press any key to continue..." -n1 key2
 	echo
 }
-
-#
-# Only function and alias definitions until the subcommand handling at the end.
-#
 
 #
 # Variable naming convetion:
