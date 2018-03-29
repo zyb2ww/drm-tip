@@ -2239,10 +2239,6 @@ function dim_usage
 	echo "See '$dim help' for more information."
 }
 
-# occasional check for dim updates
-check_for_updates
-git_version_check
-
 #
 # Command line options. Global short uppercase variables.
 #
@@ -2330,6 +2326,10 @@ else
 	done
 
 	read_integration_config
+
+	# occasional check for dim updates
+	check_for_updates
+	git_version_check
 fi
 
 # throw away to not confuse list-aliases
