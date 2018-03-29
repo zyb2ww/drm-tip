@@ -94,6 +94,12 @@ rebasing) push out the new tree with::
 This will also rebuild a new drm-tip integration tree. For historical reasons
 there's shortcut for the drm-intel specific branches for most of these commands.
 
+Please note that if there is no specific command available from dim then you
+can always use your every day tooling to get things done.
+For example, if a wrong patch was applied or you need to update commit message
+or fix anything else in the git repository, then just use git to do so
+as usual.
+
 Please subscribe to the https://lists.freedesktop.org/mailman/listinfo/dim-tools
 mailing list if you use dim.
 
