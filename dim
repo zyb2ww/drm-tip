@@ -1256,9 +1256,8 @@ function dim_remove_branch
 		git worktree prune &> /dev/null || true
 	fi
 
-	if git_branch_exists $branch &&
-	   ! $DRY git branch -d $branch  ; then
-			warn_or_fail "Can't remove $branch in working repo"
+	if git_branch_exists $branch && ! $DRY git branch -d $branch; then
+		warn_or_fail "Can't remove $branch in working repo"
 	fi
 
 	cd $DIM_PREFIX/drm-tip
@@ -1490,17 +1489,17 @@ function dim_checkpatch
 
 function _restore_head_on_exit
 {
-    local original_ref
+	local original_ref
 
-    original_ref="$(git rev-parse --abbrev-ref HEAD)"
+	original_ref="$(git rev-parse --abbrev-ref HEAD)"
 
-    if [ "$original_ref" == "HEAD" ]; then
-        original_ref="$(git rev-parse HEAD)"
-    fi
+	if [ "$original_ref" == "HEAD" ]; then
+		original_ref="$(git rev-parse HEAD)"
+	fi
 
-    # we want to expand this now
-    # shellcheck disable=SC2064
-    trap "git checkout -q $original_ref" EXIT
+	# we want to expand this now
+	# shellcheck disable=SC2064
+	trap "git checkout -q $original_ref" EXIT
 }
 
 function dim_sparse
@@ -1508,43 +1507,43 @@ function dim_sparse
 	local range rv sr prev_sr prev_remapped diff_result remap_log commits
 
 	range=$(rangeish "${1:-}")
-    remap_log=$DIM_PREFIX/maintainer-tools/remap-log
+	remap_log=$DIM_PREFIX/maintainer-tools/remap-log
 
-    if [ ! -e  $remap_log ]; then
-        echo "$remap_log is not compailed, please run make in maintainer-tools dir!"
-        exit 1
-    fi
+	if [ ! -e  $remap_log ]; then
+		echo "$remap_log is not compailed, please run make in maintainer-tools dir!"
+		exit 1
+	fi
 
-    _restore_head_on_exit
+	_restore_head_on_exit
 
-    # make the initial reference build
-    commits=( $(git rev-list --reverse $range) )
-    git checkout --detach  ${commits[0]}~ > /dev/null 2>&1
-    make -j8 drivers/gpu/drm/ > /dev/null 2>&1
+	# make the initial reference build
+	commits=( $(git rev-list --reverse $range) )
+	git checkout --detach  ${commits[0]}~ > /dev/null 2>&1
+	make -j8 drivers/gpu/drm/ > /dev/null 2>&1
 
 	for commit in "${commits[@]}"; do
-        touch --no-create $(git diff --name-only $commit~...$commit)
-        prev_sr="$(make C=1 -j$(nproc) drivers/gpu/drm/ 2>&1 1>/dev/null | sort)"
+		touch --no-create $(git diff --name-only $commit~...$commit)
+		prev_sr="$(make C=1 -j$(nproc) drivers/gpu/drm/ 2>&1 1>/dev/null | sort)"
 
-        git checkout --detach $commit >/dev/null 2>&1
-        sr="$(make C=1 -j$(nproc) drivers/gpu/drm/ 2>&1 1>/dev/null | sort)"
+		git checkout --detach $commit >/dev/null 2>&1
+		sr="$(make C=1 -j$(nproc) drivers/gpu/drm/ 2>&1 1>/dev/null | sort)"
 
-        prev_remapped="$(echo "$prev_sr" | $remap_log <(git diff HEAD~ | $remap_log))"
-        diff_result="$(diff -u <(echo "$prev_remapped") <(echo "$sr") || true)"
+		prev_remapped="$(echo "$prev_sr" | $remap_log <(git diff HEAD~ | $remap_log))"
+		diff_result="$(diff -u <(echo "$prev_remapped") <(echo "$sr") || true)"
 
-        echo "Commit: $(git log -n1 --format='%s' $commit)"
-        if [ -n "$diff_result" ]; then
-            echo "$diff_result" | grep -E '^[+-]' | grep -E -v '^[+-]{3}'
-        else
-            echo "Okay!"
-        fi
-        echo
+		echo "Commit: $(git log -n1 --format='%s' $commit)"
+		if [ -n "$diff_result" ]; then
+			echo "$diff_result" | grep -E '^[+-]' | grep -E -v '^[+-]{3}'
+		else
+			echo "Okay!"
+		fi
+		echo
 
-        if (echo "$diff_result" | grep -q '^+'); then
-            rv=1
-        fi
+		if (echo "$diff_result" | grep -q '^+'); then
+			rv=1
+		fi
 
-        prev_sr="$sr"
+		prev_sr="$sr"
 	done
 
 	return $rv
@@ -2285,10 +2284,10 @@ shift $((OPTIND - 1))
 
 # first positional argument is the subcommand
 if [ -n "$HELP" ] || [ "$#" = "0" ]; then
-    subcommand="usage"
+	subcommand="usage"
 else
-    subcommand="$1"
-    shift
+	subcommand="$1"
+	shift
 fi
 
 # generic usage to be used for ${1:?$usage} style argument references
