@@ -1818,7 +1818,7 @@ function dim_pull_request
 		repo="drm-intel"
 	else
 		tag=$(tag_name "$branch")
-		gitk "$branch@{upstream}" ^$upstream &
+		gitk "$branch" ^$upstream &
 		tag_branch $tag $branch
 		$DRY git push $remote $tag
 		prep_pull_mail $req_file $tag
