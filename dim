@@ -31,8 +31,8 @@
 set -e
 
 #
-# User configuration. Set in environment or configuration file. See
-# dimrc.sample for an example.
+# User configuration. Global DIM_ prefixed uppercase variables. Set in
+# environment or configuration file. See dimrc.sample for an example.
 #
 
 # dim configuration file
@@ -68,7 +68,7 @@ DIM_TEMPLATE_SIGNATURE=${DIM_TEMPLATE_SIGNATURE:-$HOME/.dim.template.signature}
 DIM_GPG_KEYID=${DIM_GPG_KEYID:+-u $DIM_GPG_KEYID}
 
 #
-# Internal configuration.
+# Internal configuration. Global dim_ prefixed variables.
 #
 
 dim=$(basename $0)
@@ -78,7 +78,7 @@ dim_timestamp="$(date --utc +%Yy-%mm-%dd-%Hh-%Mm-%Ss) UTC"
 
 # Recipients for all dim based pull requests.
 # Add To: lines to the end, Cc: lines in the beginning with -c.
-pull_request_recipients=(
+dim_pull_request_recipients=(
 	-c "Daniel Vetter <daniel.vetter@ffwll.ch>"
 	-c "Jani Nikula <jani.nikula@linux.intel.com>"
 	-c "Joonas Lahtinen <joonas.lahtinen@linux.intel.com>"
@@ -92,7 +92,7 @@ pull_request_recipients=(
 )
 
 # Recipients for drm-intel-testing updates.
-test_request_recipients=(
+dim_test_request_recipients=(
 	-c "Jani Nikula <jani.nikula@linux.intel.com>"
 	-c "Joonas Lahtinen <joonas.lahtinen@linux.intel.com>"
 	-c "Rodrigo Vivi <rodrigo.vivi@intel.com>"
@@ -101,7 +101,7 @@ test_request_recipients=(
 )
 
 # integration configuration
-integration_config=nightly.conf
+dim_integration_config=nightly.conf
 
 function read_integration_config
 {
@@ -110,16 +110,16 @@ function read_integration_config
 	declare -g -A drm_tip_repos
 	declare -g -a drm_tip_config
 
-	if [ -r $DIM_PREFIX/drm-rerere/$integration_config ]; then
+	if [ -r $DIM_PREFIX/drm-rerere/$dim_integration_config ]; then
 		# shellcheck source=/dev/null
-		source $DIM_PREFIX/drm-rerere/$integration_config
+		source $DIM_PREFIX/drm-rerere/$dim_integration_config
 
 		if [[ "${#drm_tip_repos[@]}" = "0" ]] || [[ "${#drm_tip_config[@]}" = "0" ]]; then
-			echoerr "$integration_config not set up correctly, please fix manually"
+			echoerr "$dim_integration_config not set up correctly, please fix manually"
 			exit 1
 		fi
 	else
-		echoerr "$integration_config is missing, please check your configuration and/or run dim setup"
+		echoerr "$dim_integration_config is missing, please check your configuration and/or run dim setup"
 		exit 1
 	fi
 
@@ -164,7 +164,7 @@ function pause
 # Variable naming convetion:
 #
 # repo:
-#	symbolic git repository name from $integration_config
+#	symbolic git repository name from $dim_integration_config
 # remote:
 #	local remote name in the git repository for the current path
 # branch:
@@ -643,12 +643,12 @@ function dim_rebuild_tip
 
 	cd $rerere
 	if git status --porcelain | grep -v "^.. rr-cache" | grep -q -v "^[ ?][ ?]"; then
-		warn_or_fail "integration configuration file $integration_config not committed"
+		warn_or_fail "integration configuration file $dim_integration_config not committed"
 	fi
 
 	update_rerere_cache
 
-	echo -n "Reloading $integration_config... "
+	echo -n "Reloading $dim_integration_config... "
 	read_integration_config
 	echo "Done."
 
@@ -1237,10 +1237,10 @@ function dim_create_branch
 	git push $DRY_RUN $remote +$branch --set-upstream
 
 	cd $DIM_PREFIX/drm-rerere
-	$DRY sed -i "s/^\() # DO NOT CHANGE THIS LINE\)$/\t\"$repo\t\t${branch//\//\\\/}\"\n\1/" $integration_config
+	$DRY sed -i "s/^\() # DO NOT CHANGE THIS LINE\)$/\t\"$repo\t\t${branch//\//\\\/}\"\n\1/" $dim_integration_config
 
-	$DRY git add $integration_config
-	$DRY git commit --quiet -m "Add $repo $branch to $integration_config"
+	$DRY git add $dim_integration_config
+	$DRY git commit --quiet -m "Add $repo $branch to $dim_integration_config"
 }
 
 function dim_remove_branch
@@ -1265,7 +1265,7 @@ function dim_remove_branch
 	repo=$(branch_to_repo $branch)
 
 	if [[ $repo == "" ]] ; then
-		echoerr "$branch not found in $integration_config"
+		echoerr "$branch not found in $dim_integration_config"
 		exit 1
 	fi
 
@@ -1274,10 +1274,10 @@ function dim_remove_branch
 	git push $DRY_RUN $remote --delete $branch
 	$DRY git fetch $remote --prune
 	cd $DIM_PREFIX/drm-rerere
-	$DRY sed -i "/^[[:space:]]*\"${repo}[[:space:]]\+${branch//\//\\\/}.*$/d" $integration_config
+	$DRY sed -i "/^[[:space:]]*\"${repo}[[:space:]]\+${branch//\//\\\/}.*$/d" $dim_integration_config
 
-	$DRY git add $integration_config
-	$DRY git commit --quiet -m "Remove $repo $branch from $integration_config"
+	$DRY git add $dim_integration_config
+	$DRY git commit --quiet -m "Remove $repo $branch from $dim_integration_config"
 
 	dim_rebuild_tip
 }
@@ -1312,7 +1312,7 @@ function dim_checkout
 		fi
 
 		if [[ $repo == "" ]] ; then
-			echoerr "$branch not found in $integration_config"
+			echoerr "$branch not found in $dim_integration_config"
 			exit 1
 		fi
 
@@ -1755,7 +1755,7 @@ function dim_update_next_continue
 	prep_pull_mail_signature >> $req_file
 
 	$DRY $DIM_MUA -s "Updated drm-intel-testing" \
-	     -i $req_file "${test_request_recipients[@]}"
+	     -i $req_file "${dim_test_request_recipients[@]}"
 }
 
 function dim_tag_branch
@@ -1827,7 +1827,7 @@ function dim_pull_request
 
 	git request-pull $upstream $git_url $tag >> $req_file
 	$DRY $DIM_MUA -s "[PULL] $branch" \
-	     -i $req_file "${pull_request_recipients[@]}"
+	     -i $req_file "${dim_pull_request_recipients[@]}"
 }
 
 function dim_pull_request_next
@@ -2243,7 +2243,7 @@ check_for_updates
 git_version_check
 
 #
-# Command line options.
+# Command line options. Global short uppercase variables.
 #
 
 DRY_RUN=
@@ -2317,7 +2317,7 @@ export __dim_running=1
 
 # Commands useful for developers don't need a full dim setup
 if list_developer_commands | grep -qx $subcmd; then
-	if [ -r $DIM_PREFIX/drm-rerere/$integration_config ]; then
+	if [ -r $DIM_PREFIX/drm-rerere/$dim_integration_config ]; then
 		read_integration_config
 	fi
 else
