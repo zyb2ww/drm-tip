@@ -189,6 +189,10 @@ function quilt_clean_check
 	fi
 }
 
+function quilt_refresh {
+	quilt refresh  --no-timestamps -u -p ab --no-index
+}
+
 qf=$(basename $0)
 
 # first positional argument is the subcommand
@@ -293,7 +297,7 @@ function qf_refresh
 	quiet_pop_all
 
 	while quilt push ; do
-		quilt refresh
+		quilt_refresh
 	done
 
 	# ignore "nothing to commit"
@@ -482,7 +486,7 @@ function qf_wiggle_push
 
 function qf_resolved
 {
-	quilt refresh
+	quilt_refresh
 	quilt header -e
 }
 
