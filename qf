@@ -226,7 +226,7 @@ function qf_setup
 		baseline=$(git rev-parse $1)
 		remote=$(git config branch.$branch.remote)
 
-		branch_init $2
+		branch_init
 	fi
 }
 
