@@ -85,6 +85,7 @@ dim_pull_request_recipients=(
 	-c "Rodrigo Vivi <rodrigo.vivi@intel.com>"
 	-c "Sean Paul <seanpaul@chromium.org>"
 	-c "Gustavo Padovan <gustavo@padovan.org>"
+	-c "Maarten Lankhorst <maarten.lankhorst@linux.intel.com>"
 	-c "dri-devel@lists.freedesktop.org"
 	-c "intel-gfx@lists.freedesktop.org"
 	-c "dim-tools@lists.freedesktop.org"
