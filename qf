@@ -190,7 +190,7 @@ function quilt_clean_check
 }
 
 function quilt_refresh {
-	quilt refresh  --no-timestamps -u -p ab --no-index
+	QUILT_DIFF_OPTS="-p" quilt refresh  --no-timestamps -u -p ab --no-index
 }
 
 qf=$(basename $0)
