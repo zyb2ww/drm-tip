@@ -562,10 +562,10 @@ function qf_help
 	fi
 
 	if hash rst2man 2>/dev/null; then
-		renderer=rst2man
+		renderer="rst2man"
 		pager="man -l -"
 	else
-		renderer=cat
+		renderer="cat"
 		pager=${PAGER:-cat}
 	fi
 
