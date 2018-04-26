@@ -30,8 +30,10 @@ you have improvements for dim, see `contributing
 
 If you have a freedesktop.org account and plan to push things on one of the
 drm-xxx repos, you should use the ssh://git.freedesktop.org/git/drm-xxx urls
-when adding a remote and, if it's not already done, you should add a new entry in
-~/.ssh/config::
+when adding a remote. Note that dim will ask you to add missing remotes
+automatically, and by default uses the ssh:// url format. To make these urls
+without login names work, you should add a new entry in ~/.ssh/config, if that's
+not yet configured::
 
     $ printf '\nHost git.freedesktop.org\n\tUser <username>' >> ~/.ssh/config
 
