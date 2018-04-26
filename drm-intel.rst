@@ -1,3 +1,5 @@
+.. _drm-intel:
+
 ===========
  drm-intel
 ===========
@@ -108,98 +110,6 @@ on the branch. Please add 'git cherry-pick -x' style annotation above your
 Signed-off-by: line in the commit message:
 
 	(cherry picked from commit 0bff4858653312a10c83709e0009c3adb87e6f1e)
-
-Resolving Conflicts when Rebuilding drm-tip
-===========================================
-
-When you push patches with dim drm-tip always gets rebuilt and this can
-sometimes fail, for example like this: ::
-
-        Updating rerere cache and nightly.conf... Done.
-        Fetching drm-upstream... Done.
-        Fetching origin... Done.
-        Fetching sound-upstream... Done.
-        Merging origin/drm-intel-fixes... Reset. Done.
-        Merging drm-upstream/drm-fixes... Fast-forward. Done.
-        Merging origin/drm-intel-next-fixes... Done.
-        Merging origin/drm-intel-next-queued... ++<<<<<<< HEAD
-        ++=======
-        ++>>>>>>> origin/drm-intel-next-queued
-        Fail: conflict merging origin/drm-intel-next-queued
-
-Often it's very easy to resolve such conflicts, but maintainers can take over
-when it's tricky or something fails in the below procedure.
-
-1. First check that drm-intel-next-queued was indeed pushed correctly and that
-   your local and remote branches match.
-
-2. Then rebuild the integration branch just to confirm: ::
-
-        $ dim rebuild-tip
-
-   It's handy to keep the log output for context so that you know which branch
-   caused the conflicts, and which branches are already included.
-
-3. Switch to $DIM_PREFIX/drm-tip and analyze the conflict: ::
-
-        $ cd $DIM_PREFIX/drm-tip
-        $ git diff # shows three-way diff of conflict
-        $ gitk --merge # lists all commits git believes to be relevant
-
-   If the conflict is simple and created by one of the patches you pushed fix
-   things up and compile/test the resulting kernel. In case of doubt just ping
-   authors of other patches or maintainers on IRC.
-
-4. When you're happy with the resolution commit it with ::
-
-        $ git commit -a
-
-   git will then store the conflict resolution internally (see git help rerere
-   for how this is implemented). Then re-run drm-tip generation to confirm the
-   resolution has been captured correctly by git (sometimes git rerere can't
-   match up your resolution with the conflict for odd reasons) and to make sure
-   there's no other conflict in later merges: ::
-
-        $ dim rebuild-tip
-
-   This will also push the stored conflict resolution to the drm-intel-rerere
-   branch and therefore publishes your resolution. Everything before this step
-   has just local effects.
-
-And if any step fails or the conflict is tricky just ping maintainers.
-
-If the Conflict Reappears
--------------------------
-
-In some odd cases git rerere fails to recognize the conflict, and doesn't store
-conflict resolution. This needs to be handled with a manual fixup patch, and the
-best way to go about this is:
-
-1. Try to resolve the conflict normally, but then running ::
-
-       $ dim rebuild-tip
-
-   fails. First, store the current state, including the conflict markers and
-   with no other changes applied::
-
-       $ cd $DIM_PREFIX/drm-tip
-       $ git add -u
-       $ git commit
-
-2. Resolve the conflict normally, but don't stage it or commit it in any
-   fashion. Check that the resolution looks correct and removes all the conflict
-   markers you've just committed::
-
-       $ git diff
-
-   Then store it as a manual fixup patch::
-
-       $ git diff | dim cat-to-fixup
-
-   And finally rebuild the integration tree, which should now go through
-   smoothly, at least for this merge::
-
-       $ dim rebuild-tip
 
 Merge Timeline
 ==============

@@ -61,10 +61,11 @@ Linus' master on a weekly basis.
 The DRM Misc Repository
 -----------------------
 
-See drm-misc_ for repository details. Maintained by Daniel Vetter, Gustavo
-Padovan, and Sean Paul, with a large pool of committers.
+See :ref:`drm-misc` and `the drm-misc repository`_ for repository
+details. Maintained by Maarten Lankhorst, Gustavo Padovan, and Sean Paul, with a
+large pool of committers.
 
-.. _drm-misc: https://cgit.freedesktop.org/drm/drm-misc
+.. _the drm-misc repository: https://cgit.freedesktop.org/drm/drm-misc
 
 drm-misc-next
 ~~~~~~~~~~~~~
@@ -99,11 +100,11 @@ This is for bugfixes which target the current -rc cycle.
 The Upstream i915 Driver Repository
 -----------------------------------
 
-See drm-intel_ for repository details. Maintained by Jani Nikula, Joonas
-Lahtinen and Rodrigo Vivi, with a large pool of committers. Consists mostly of
-``drivers/gpu/drm/i915``.
+See :ref:`drm-intel` and `the drm-intel repository`_ for repository
+details. Maintained by Jani Nikula, Joonas Lahtinen and Rodrigo Vivi, with a
+large pool of committers. Consists mostly of ``drivers/gpu/drm/i915``.
 
-.. _drm-intel: https://cgit.freedesktop.org/drm/drm-intel
+.. _the drm-intel repository: https://cgit.freedesktop.org/drm/drm-intel
 
 drm-intel-next-queued (aka "dinq")
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -148,9 +149,9 @@ much follow the stable rules.
 The DRM Testing and Integration Repository
 ------------------------------------------
 
-See drm-tip_ for repository details.
+See :ref:`drm-tip` and `the drm-tip repository`_ for repository details.
 
-.. _drm-tip: https://cgit.freedesktop.org/drm/drm-tip
+.. _the drm-tip repository: https://cgit.freedesktop.org/drm/drm-tip
 
 drm-tip
 ~~~~~~~
@@ -159,7 +160,7 @@ This is the overall integration tree for drm, and lives in
 ``git://anongit.freedesktop.org/drm-tip``. Every time one of the above branches
 is updated drm-tip gets rebuilt. If there's a conflict see section on `resolving
 conflicts when rebuilding drm-tip
-<drm-intel.html#resolving-conflicts-when-rebuilding-drm-tip>`_.
+<drm-tip.html#resolving-conflicts-when-rebuilding-drm-tip>`_.
 
 drm-rerere
 ~~~~~~~~~~

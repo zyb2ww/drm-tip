@@ -23,6 +23,7 @@ Contents:
    :maxdepth: 2
 
    repositories
+   drm-tip
    drm-misc
    drm-intel
    getting-started
