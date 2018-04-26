@@ -189,7 +189,7 @@ function url_to_remote # url [url ...]
 	fi
 
 	for url; do
-		remote=$(git remote -v | grep -m 1 "$url" | cut -f 1)
+		remote=$(git remote -v | grep -m 1 "$url (" | cut -f 1)
 		if [[ -n "$remote" ]]; then
 			echo "$remote"
 			return 0
