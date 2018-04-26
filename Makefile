@@ -29,7 +29,7 @@ all: drm-intel.html dim.html drm-misc.html remap-log
 	rst2html $< > $@
 
 remap-log: remap-log.c
-		$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -o $@ $<
 
 drm-intel.html: drm-intel.rst drm-intel-flow.svg drm-intel-timeline.rst drm-intel-timeline.json
 
