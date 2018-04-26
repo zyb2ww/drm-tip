@@ -57,7 +57,7 @@ mancheck:
 	rst2man --strict --no-raw dim.rst >/dev/null
 	rst2man --strict --no-raw qf.rst >/dev/null
 
-check: shellcheck mancheck
+check: shellcheck mancheck doccheck
 
 .PHONY: clean
 clean:
@@ -71,10 +71,14 @@ help:
 	@echo "  singlehtml to make a single large HTML file"
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
+	@echo "  doccheck   to check standalone HTML build"
+	@echo "  mancheck   to check man pages using rst2html"
+	@echo "  shellcheck to check shell scripts using shellcheck"
+	@echo "  check      to run all *check targets"
 
 # FIXME: This works for the first build, but not for updates. Look into using
 # Sphinx extensions for both the graphviz and wavedrom parts.
-html dirhtml singlehtml linkcheck doctest: drm-intel-flow.svg drm-misc-commit-flow.svg
+html dirhtml singlehtml linkcheck doctest doccheck: drm-intel-flow.svg drm-misc-commit-flow.svg
 
 .PHONY: html
 html:
@@ -106,3 +110,7 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
+
+.PHONY: doccheck
+doccheck:
+	$(SPHINXBUILD) -EWnq -b html $(ALLSPHINXOPTS) $(BUILDDIR)/doccheck
