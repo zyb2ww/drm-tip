@@ -1,8 +1,11 @@
-# This depends on rst2html and graphviz, and the resulting html uses
-# http://wavedrom.com/ online for rendering the timeline. The offline wavedrom
-# conversion seems a bit tricky to install, but is possible if needed. To edit
-# the wavedrom json, copy-pasting to and from http://wavedrom.com/editor.html is
-# handy as it shows the result live.
+# The documentation build depends on Sphinx and graphviz, and the resulting html
+# uses http://wavedrom.com/ online for rendering the timeline. The offline
+# wavedrom conversion seems a bit tricky to install, but is possible if
+# needed. To edit the wavedrom json, copy-pasting to and from
+# http://wavedrom.com/editor.html is handy as it shows the result live.
+#
+# The man pages and mancheck depend on rst2html, but the rest of the pages don't
+# need to be limited to rst2html.
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
@@ -20,22 +23,13 @@ I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 CFLAGS = -O2 -g -Wextra
 
 .PHONY: all
-all: drm-intel.html dim.html drm-misc.html remap-log
+all: remap-log
 
 %.svg: %.dot
 	dot -T svg -o $@ $<
 
-%.html: %.rst
-	rst2html $< > $@
-
 remap-log: remap-log.c
 	$(CC) $(CFLAGS) -o $@ $<
-
-drm-intel.html: drm-intel.rst drm-intel-flow.svg drm-intel-timeline.rst drm-intel-timeline.json
-
-drm-misc.html: drm-misc.rst drm-misc-timeline.rst drm-misc-timeline.json drm-misc-commit-flow.svg
-
-dim.html: dim.rst
 
 SC_EXCLUDE := \
 	-e SC2001 \
@@ -63,11 +57,11 @@ mancheck:
 	rst2man --strict --no-raw dim.rst >/dev/null
 	rst2man --strict --no-raw qf.rst >/dev/null
 
-check: shellcheck mancheck all
+check: shellcheck mancheck
 
 .PHONY: clean
 clean:
-	rm -rf drm-intel.html drm-intel-flow.svg drm-misc-commit-flow.svg dim.html drm-misc.html $(BUILDDIR)
+	rm -rf drm-intel-flow.svg drm-misc-commit-flow.svg $(BUILDDIR)
 
 .PHONY: help
 help:
