@@ -25,8 +25,7 @@ Getting Started
 
 First you need a `freedesktop.org account with the drm-misc group permission
 <https://www.freedesktop.org/wiki/AccountRequests/>`_. Then you need to setup the
-branches and tooling, see the `getting started with dim <dim.html#quickstart>`_
-guide.
+branches and tooling, see :ref:`getting-started`.
 
 Branches
 ========

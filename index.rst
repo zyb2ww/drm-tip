@@ -25,6 +25,7 @@ Contents:
    repositories
    drm-misc
    drm-intel
+   getting-started
    dim
    qf
    TODO
