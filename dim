@@ -1764,7 +1764,7 @@ function dim_update_next
 	$DRY git add drivers/gpu/drm/i915/i915_drv.h
 	git commit $DRY_RUN -sm "drm/i915: Update DRIVER_DATE to $driver_date"
 
-	gitk drm-intel-next-queued ^$(repo_to_remote drm-upstream)/drm-next &
+	gitk --first-parent drm-intel-next-queued ^$(repo_to_remote drm-upstream)/drm-next &
 
 	# try to push dinq first in case someone raced
 	FORCE=1 dim_push_queued
@@ -1864,7 +1864,7 @@ function dim_pull_request
 		repo="drm-intel"
 	else
 		tag=$(tag_name "$branch")
-		gitk "$branch" ^$upstream &
+		gitk --first-parent "$branch" ^$upstream &
 		tag_branch $tag $branch
 		$DRY git push $remote $tag
 		prep_pull_mail $req_file $tag
