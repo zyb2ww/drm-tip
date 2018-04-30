@@ -901,7 +901,12 @@ function dim_apply_pull
 
 	pull_branch=$(sed -e '0,/[gG]it repository at:$/d' $file | head -n 2 | tail -n 1)
 
-	echo $pull_branch
+	if [[ -z "$pull_branch" ]] ; then
+		echoerr "no pull request found"
+		return 1
+	fi
+
+	echo Pulling $pull_branch ...
 
 	git fetch $pull_branch
 	for sha1 in $(git rev-list "HEAD..FETCH_HEAD" --no-merges) ; do
