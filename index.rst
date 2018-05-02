@@ -26,6 +26,7 @@ Contents:
    drm-tip
    drm-misc
    drm-intel
+   commit-access
    getting-started
    dim
    qf
