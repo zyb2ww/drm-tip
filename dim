@@ -734,10 +734,11 @@ function dim_rebuild_tip
 # additional patch checks before pushing, e.g. for r-b tags
 function checkpatch_commit_push
 {
-	local sha1 non_dim
+	local sha1 non_dim rv
 
 	sha1=$1
 	managed_branch=${2:-1}
+	rv=0
 
 	# use real names for people with many different email addresses
 	author=$(git show -s $sha1 --format="format:%an")
@@ -747,30 +748,45 @@ function checkpatch_commit_push
 
 	# check for author sign-off
 	if ! git show -s $sha1 | grep -qi "S.*-by:.*\\($author\\|$author_outlook\\)" ; then
-		warn_or_fail "$sha1 is lacking author of sign-off"
+		echoerr "$sha1 is lacking author of sign-off"
+		rv=1
 	fi
 
 	# check for committer sign-off
 	if ! git show -s $sha1 | grep -qi "S.*-by:.*$committer"  ; then
-		warn_or_fail "$sha1 is lacking committer of sign-off"
+		echoerr "$sha1 is lacking committer of sign-off"
+		rv=1
 	fi
 
 	# check for Link tag
 	if [[ "$managed_branch" = "1" ]] && ! git show -s $sha1 | grep -qi 'Link:'  ; then
-		warn_or_fail "$sha1 is lacking of link tag"
+		echoerr "$sha1 is lacking of link tag"
+		rv=1
 	fi
 
 	# check for a-b/r-b tag
-	if git show -s $sha1 | grep -qi '\(reviewed\|acked\)\S*-by:'  ; then
-		return
+	if ! git show -s $sha1 | grep -qi '\(reviewed\|acked\)\S*-by:' && \
+	   ! [[ "$committer" != "$author" ]]; then
+		echoerr "$sha1 is lacking mandatory review"
+		rv=1
 	fi
 
-	# check for committer != author
-	if [[ "$committer" != "$author" ]]; then
-		return
-	fi
+	return $rv
+}
 
-	warn_or_fail "$sha1 is lacking mandatory review"
+function checkpatch_commit_push_range
+{
+	local rv
+
+	rv=0
+
+	for sha1 in $(git rev-list "$@" --no-merges) ; do
+		checkpatch_commit_push $sha1 || rv=1
+	done
+
+	if [ $rv == "1" ] ; then
+		warn_or_fail "issues in commits detected"
+	fi
 }
 
 # push branch $1, rebuild drm-tip. the rest of the arguments are passed to git
@@ -788,9 +804,7 @@ function dim_push_branch
 
 	committer_email=$(git_committer_email)
 
-	for sha1 in $(git rev-list "$branch@{u}..$branch" --committer="$committer_email" --no-merges) ; do
-		checkpatch_commit_push $sha1
-	done
+	checkpatch_commit_push_range "$branch@{u}..$branch" --committer="$committer_email"
 
 	git push $DRY_RUN $remote $branch "$@"
 
@@ -909,9 +923,7 @@ function dim_apply_pull
 	echo Pulling $pull_branch ...
 
 	git fetch $pull_branch
-	for sha1 in $(git rev-list "HEAD..FETCH_HEAD" --no-merges) ; do
-		checkpatch_commit_push $sha1 0
-	done
+	checkpatch_commit_push_range "HEAD..FETCH_HEAD"
 
 	$DRY git pull $pull_branch
 
