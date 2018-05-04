@@ -922,6 +922,11 @@ function dim_apply_pull
 		return 1
 	fi
 
+	message_id=$(message_get_id $file)
+	if [ -z "$message_id" ]; then
+		warn_or_fail "No message-id found in the pull request file."
+	fi
+
 	echo Pulling $pull_branch ...
 
 	git fetch $pull_branch
@@ -937,14 +942,9 @@ function dim_apply_pull
 		fi
 	fi
 
-	message_id=$(message_get_id $file)
-
 	git commit --amend -s --no-edit
 	if [ -n "$message_id" ]; then
 		dim_commit_add_tag "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id"
-	else
-		echoerr "WARNING: No message-id found in the patch file."
-		rv=1
 	fi
 
 
