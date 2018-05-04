@@ -505,9 +505,7 @@ function check_conflicts # tree
 		# we need an empty line to make it look pretty
 		echoerr ""
 		echoerr "FAILURE: Could not merge $1"
-		echoerr "See the section \"Resolving Conflicts when Rebuilding drm-tip\""
-		echoerr "in the drm-intel.rst documentation for how to handle this situation."
-		exit 1
+		return 1
 	fi
 	true
 }
@@ -703,7 +701,11 @@ function dim_rebuild_tip
 				echo -n "Applying manual fixup patch for $integration_branch merge... "
 				patch -p1 -i $fixup_file
 			fi
-			check_conflicts "$repo/$branch"
+			if ! check_conflicts "$repo/$branch" ; then
+				echoerr "See the section \"Resolving Conflicts when Rebuilding drm-tip\""
+				echoerr "in the drm-tip.rst documentation for how to handle this situation."
+				return 1
+			fi
 			git add -u
 
 			# because we filter out fast-forward merges there will
@@ -925,7 +927,15 @@ function dim_apply_pull
 	git fetch $pull_branch
 	checkpatch_commit_push_range "HEAD..FETCH_HEAD"
 
-	$DRY git pull $pull_branch
+	if ! $DRY git pull $pull_branch ; then
+		if ! check_conflicts "$pull_branch" ; then
+			echoerr "Please resolve and then commit normally using git"
+			return 1
+		else
+			git add -u
+			git commit --no-edit --quiet
+		fi
+	fi
 
 	message_id=$(message_get_id $file)
 
