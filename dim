@@ -924,7 +924,7 @@ function dim_apply_pull
 
 	cat > $file
 
-	pull_branch=$(sed -e '0,/[gG]it repository at:$/d' $file | head -n 2 | tail -n 1)
+	pull_branch=$(sed -ne '/[gG]it repository at:$/{n;n;p}' $file)
 
 	if [[ -z "$pull_branch" ]] ; then
 		echoerr "no pull request found"
