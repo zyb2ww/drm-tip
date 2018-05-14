@@ -952,14 +952,14 @@ function dim_apply_pull
 
 			return 1
 		else
-			git add -u
-			git commit --no-edit --quiet
+			$DRY git add -u
+			$DRY git commit --no-edit --quiet
 		fi
 	fi
 
-	git commit --amend -s --no-edit
+	$DRY git commit --amend -s --no-edit
 	if [ -n "$message_id" ]; then
-		dim_commit_add_tag "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id"
+		$DRY dim_commit_add_tag "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id"
 	fi
 
 
