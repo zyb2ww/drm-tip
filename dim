@@ -1264,7 +1264,6 @@ function dim_create_branch
 
 	branch=${1:?$usage}
 	start=${2:-HEAD}
-	repo="drm-intel"
 
 	cd $DIM_PREFIX/$DIM_REPO
 
