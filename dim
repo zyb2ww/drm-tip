@@ -939,6 +939,10 @@ function dim_apply_pull
 	echo Pulling $pull_branch ...
 
 	git fetch $pull_branch
+	if [[ -z "$(git rev-list HEAD..FETCH_HEAD)" ]] ; then
+		warn_or_fail "Nothing in the pull request"
+	fi
+
 	checkpatch_commit_push_range "HEAD..FETCH_HEAD"
 
 	if ! $DRY git pull $pull_branch ; then
