@@ -785,6 +785,24 @@ function checkpatch_commit_push
 	return $rv
 }
 
+function checkmerge_commit_push
+{
+	local sha1 managed_branch rv body_text
+
+	sha1=$1
+	managed_branch=${2}
+	rv=0
+
+	body_text="$(git show $sha1 -s --format="format:%b" | grep -v "^$" | grep -v "^\S*:")"
+
+	if [[ -z "$body_text" ]] ; then
+		echoerr "$sha1 is lacking merge commit justification"
+		rv=1
+	fi
+
+	return $rv
+}
+
 function checkpatch_commit_push_range
 {
 	local rv managed_branch
@@ -795,6 +813,10 @@ function checkpatch_commit_push_range
 
 	for sha1 in $(git rev-list "$@" --no-merges) ; do
 		checkpatch_commit_push $sha1 $managed_branch || rv=1
+	done
+
+	for sha1 in $(git rev-list "$@" --merges) ; do
+		checkmerge_commit_push $sha1 $managed_branch || rv=1
 	done
 
 	if [ $rv == "1" ] ; then
