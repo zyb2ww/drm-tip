@@ -745,10 +745,10 @@ function dim_rebuild_tip
 # additional patch checks before pushing, e.g. for r-b tags
 function checkpatch_commit_push
 {
-	local sha1 non_dim rv
+	local sha1 managed_branch rv author committer author_outlook
 
 	sha1=$1
-	managed_branch=${2:-1}
+	managed_branch=$2
 	rv=0
 
 	# use real names for people with many different email addresses
@@ -787,12 +787,14 @@ function checkpatch_commit_push
 
 function checkpatch_commit_push_range
 {
-	local rv
+	local rv managed_branch
 
+	managed_branch=$1
+	shift
 	rv=0
 
 	for sha1 in $(git rev-list "$@" --no-merges) ; do
-		checkpatch_commit_push $sha1 || rv=1
+		checkpatch_commit_push $sha1 $managed_branch || rv=1
 	done
 
 	if [ $rv == "1" ] ; then
@@ -815,7 +817,7 @@ function dim_push_branch
 
 	committer_email=$(git_committer_email)
 
-	checkpatch_commit_push_range "$branch@{u}..$branch" --committer="$committer_email"
+	checkpatch_commit_push_range 1 "$branch@{u}..$branch" --committer="$committer_email"
 
 	git push $DRY_RUN $remote $branch "$@"
 
@@ -943,7 +945,7 @@ function dim_apply_pull
 		warn_or_fail "Nothing in the pull request"
 	fi
 
-	checkpatch_commit_push_range "HEAD..FETCH_HEAD"
+	checkpatch_commit_push_range 0 "HEAD..FETCH_HEAD"
 
 	if ! $DRY git pull --no-ff $pull_branch ; then
 		if ! check_conflicts "$pull_branch" ; then
