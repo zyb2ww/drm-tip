@@ -945,7 +945,7 @@ function dim_apply_pull
 
 	checkpatch_commit_push_range "HEAD..FETCH_HEAD"
 
-	if ! $DRY git pull $pull_branch ; then
+	if ! $DRY git pull --no-ff $pull_branch ; then
 		if ! check_conflicts "$pull_branch" ; then
 			echoerr "Please resolve and then commit normally using git"
 
