@@ -248,11 +248,18 @@ function pick_protocol_url # (git|ssh|https|whatever) url [url ...]
 
 function branch_to_remote # branch
 {
-	local branch remote
+	local branch remote repo
 
 	branch=$1
-	remote=$(git rev-parse --abbrev-ref --symbolic-full-name "$branch@{upstream}")
-	remote=${remote%%/*}
+	repo=$(branch_to_repo $branch)
+
+	if [[ -z "$repo" ]] ; then
+		# fallback for special branches like rerere-cache
+		remote=$(git rev-parse --abbrev-ref --symbolic-full-name "$branch@{upstream}")
+		remote=${remote%%/*}
+	else
+		remote=$(repo_to_remote $repo)
+	fi
 
 	echo $remote
 }
@@ -1837,6 +1844,7 @@ function dim_tag_branch
 	local branch remote tag
 
 	branch=$1
+	assert_branch $branch
 	remote=$(branch_to_remote $branch)
 
 	cd $DIM_PREFIX/$DIM_REPO
