@@ -1795,7 +1795,7 @@ function dim_update_next
 	$DRY git add drivers/gpu/drm/i915/i915_drv.h
 	git commit $DRY_RUN -sm "drm/i915: Update DRIVER_DATE to $driver_date"
 
-	gitk --first-parent drm-intel-next-queued ^$(repo_to_remote drm-upstream)/drm-next &
+	gitk --first-parent drm-intel-next-queued ^$(branch_to_remote drm-next)/drm-next &
 
 	# try to push dinq first in case someone raced
 	FORCE=1 dim_push_queued
@@ -1914,7 +1914,7 @@ function dim_pull_request
 
 function dim_pull_request_next
 {
-	upstream=${1:-$(repo_to_remote drm-upstream)/drm-next}
+	upstream=${1:-$(branch_to_remote drm-next)/drm-next}
 	dim_pull_request drm-intel-next $upstream
 }
 
@@ -1926,22 +1926,18 @@ function dim_pull_request_fixes
 
 function dim_pull_request_next_fixes
 {
-	upstream=${1:-$(repo_to_remote drm-upstream)/drm-next}
+	upstream=${1:-$(branch_to_remote drm-next)/drm-next}
 	dim_pull_request drm-intel-next-fixes $upstream
 }
 
 # Note: used by bash completion
 function dim_list_upstreams
 {
-	local dim_drm_upstream_remote
-
 	cd $DIM_PREFIX/$DIM_REPO
 
-	dim_drm_upstream_remote=$(repo_to_remote drm-upstream)
-
 	echo origin/master
-	echo $dim_drm_upstream_remote/drm-next
-	echo $dim_drm_upstream_remote/drm-fixes
+	echo $(branch_to_remote drm-next)/drm-next
+	echo $(branch_to_remote drm-fixes)/drm-fixes
 }
 
 # Note: used by bash completion
@@ -1997,6 +1993,7 @@ function dim_update_branches
 function dim_status
 {
 	local repo remote drm_remote patches
+	local drm_next_upstream drm_fixes_upstream
 
 	cd $DIM_PREFIX/$DIM_REPO
 
@@ -2007,8 +2004,11 @@ function dim_status
 	for branch in $dim_branches ; do
 		repo=$(branch_to_repo $branch)
 		remote=$(repo_to_remote $repo)
+		drm_next_upstream=$(branch_to_remote drm-fixes)/drm-fixes
+		drm_fixes_upstream=$(branch_to_remote drm-next)/drm-next
 
-		patches=$(git log --oneline $remote/$branch ^origin/master ^$drm_remote/drm-next ^$drm_remote/drm-fixes | wc -l)
+		patches=$(git log --oneline $remote/$branch ^origin/master \
+			^$drm_next_upstream ^$drm_fixes_upstream | wc -l)
 
 		if [[ $patches -ne 0 ]] ; then
 			echo $repo/$branch: $patches unmerged patches
