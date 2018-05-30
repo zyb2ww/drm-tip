@@ -34,3 +34,12 @@ qf
   current high-level hacks
 - track/restore the topmost patch maybe?
 - synchronize quilt notes in qf push and qf fetch
+- switch patches/ over to worktree - those didn't exist yet when qf was
+  started, and integrate much better with git
+- helper script to apply a git patch mbox, including naming the patch file and
+  all that
+- try to figure out how to make quilt use git-style diffs, so avoid all the
+  nasty differences in diff output when regenerating patch files. Alternative:
+  Figure out how to make git apply-mbox as relaxed with applying slightly
+  misaligned patches as quilt - that would also remove the need to refresh
+  patches all the time.
