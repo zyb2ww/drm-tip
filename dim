@@ -1992,14 +1992,12 @@ function dim_update_branches
 
 function dim_status
 {
-	local repo remote drm_remote patches
+	local repo remote patches
 	local drm_next_upstream drm_fixes_upstream
 
 	cd $DIM_PREFIX/$DIM_REPO
 
 	fetch_all
-
-	drm_remote=$(repo_to_remote drm-upstream)
 
 	for branch in $dim_branches ; do
 		repo=$(branch_to_repo $branch)
@@ -2055,10 +2053,9 @@ function setup_aux_checkout # name url directory
 
 function dim_setup
 {
-	local remote drm_tip_ssh drm_upstream_git linux_upstream_git
+	local remote drm_tip_ssh linux_upstream_git
 
 	drm_tip_ssh=ssh://git.freedesktop.org/git/drm-tip
-	drm_upstream_git=git://people.freedesktop.org/~airlied/linux
 	linux_upstream_git=git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 
 	if [ ! -d $DIM_PREFIX ]; then
@@ -2086,13 +2083,6 @@ function dim_setup
 	setup_aux_checkout rerere-cache $drm_tip_ssh drm-rerere
 
 	setup_aux_checkout drm-tip $drm_tip_ssh drm-tip
-	cd drm-tip
-	if git remote | grep -q drm-upstream ; then
-		git config remote.drm-upstream.url $drm_upstream_git
-	else
-		remote=$(url_to_remote $drm_tip_ssh)
-		remote=$(url_to_remote $drm_upstream_git)
-	fi
 
 	echo "dim setup successfully completed!"
 }
