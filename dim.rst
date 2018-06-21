@@ -108,10 +108,6 @@ update-branches
 Updates all maintainer branches. Useful to synchronize all branches when other
 maintainers and committers pushed patches meanwhile.
 
-status
-------
-Lists all branches with unmerged patches, and how many patches are unmerged.
-
 cd
 --
 Changes the working directory into the git repository used by the last previous
@@ -287,6 +283,15 @@ drm-intel-fixes@lists.freedesktop.org) in drm-intel-next-queued, and try to
 cherry-pick them to drm-intel-fixes or drm-intel-next-fixes. These commands use
 dim cherry-pick internally to make sure bugfixes for fixes are cherry-picked
 too.
+
+status
+------
+Lists all branches with unmerged patches, and how many patches are unmerged. It
+will show how the overall subsystem tree looks like and where patches waiting to
+be merged have been added, in order to help maintainers with deciding which tree
+is in need of a pull request. Commiters that want to check the status of their
+current branch should use normal **git status** commands.
+
 
 pull-request *branch* *upstream*
 --------------------------------
