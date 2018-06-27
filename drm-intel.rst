@@ -172,6 +172,8 @@ An inexhaustive list of details to check:
   `details on testing requirements
   <http://blog.ffwll.ch/2013/11/testing-requirements-for-drmi915.html>`_.
 
+* The patch series has passed CI pre-merge testing. See CI details below.
+
 * An open source userspace, reviewed and ready for merging by the upstream
   project, must be available for new kernel ABI. Please see `details on
   upstreaming requirements
@@ -185,11 +187,6 @@ An inexhaustive list of details to check:
 * Each patch is of a sensible size. A good rule of thumb metric is, would you
   (or the author) stand a chance to fairly quickly understand what goes wrong if
   the commit is reported to cause a regression?
-
-* `checkpatch.pl` does not complain. (Some of the more subjective warnings may
-  be ignored at the committer's discretion.)
-
-* The patch does not introduce new `sparse` warnings.
 
 * When pushing someone else's patch you must add your own signed-off per
   http://developercertificate.org/. dim apply-branch should do this
@@ -244,8 +241,6 @@ On Confidence, Complexity, and Transparency
   you have involved enough people to feel comfortable if the justification for
   the commit is questioned afterwards.
 
-* Make sure pre-merge testing is completed successfully.
-
 On Rough Consensus
 ------------------
 
@@ -290,18 +285,37 @@ discussions happen in public forums, and make sure there's a searchable
 permanent record of any discussions for later reference. This means that for
 most things internal meetings are not the most suitable venue.
 
-Pre-Merge Testing
------------------
+Continuous Integration and Pre-Merge Testing
+--------------------------------------------
 
-Our CI infrastructure is being built up and currently requirements for pre-merge
-testing are fairly simple:
+The requirements for CI_ pre-merge testing are:
 
-* All patches must past IGT Basic Acceptance Tests (BAT) on all the CI machines
-  without causing regressions.  The CI bots will send results to intel-gfx for
-  any patches tracked by patchwork. Check CI failures and make sure any sporadic
-  failures are a) pre-existing b) tracked in bugzilla. If there's anything
-  dubious that you can't track down to pre-existing&tracked issues please don't
-  push, but instead figure out what's going on.
+* ``checkpatch.pl`` does not complain. (Some of the more subjective warnings may
+  be ignored at the committer's discretion.)
+
+* The patch does not introduce new ``sparse`` warnings.
+
+* Patch series must pass IGT Basic Acceptance Tests (BAT) on all the CI machines
+  without causing regressions.
+
+* Patch series must pass full IGT tests on CI shard machines without causing
+  regressions.
+
+* Patch series must pass GPU piglit tests on all CI machines without causing
+  regressions.
+
+The CI bots will send results to the patch author and intel-gfx for any patches
+tracked by patchwork. The results are also available on patchwork_ and the CI_
+site.
+
+Check CI failures and make sure any sporadic failures are a) pre-existing,
+and b) tracked in bugzilla. If there's anything dubious that you can't track
+down to pre-existing and tracked issues please don't push, but instead figure
+out what's going on.
+
+.. _CI: https://intel-gfx-ci.01.org/
+
+.. _patchwork: https://patchwork.freedesktop.org/project/intel-gfx/series/
 
 Tooling
 =======
