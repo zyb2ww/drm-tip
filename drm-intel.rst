@@ -196,6 +196,16 @@ An inexhaustive list of details to check:
   coordinate with maintainers to avoid unnecessary pain with conflicts. Usually
   some explicit merges are needed to avoid git getting lost.
 
+* As a general rule, do not modify the patches while applying, apart from the
+  commit message. If the patch conflicts, or needs to be changed due to review,
+  have the author rebase, update and resend. Any change at this stage is a
+  potential issue bypassing CI.
+
+  At most, minor comment and whitespace tweaks are acceptable.
+
+* Please notify maintainers (IRC is fine) of new merge conflicts during drm-tip
+  rebuild, so that they can do backmerges as needed.
+
 On Confidence, Complexity, and Transparency
 -------------------------------------------
 
