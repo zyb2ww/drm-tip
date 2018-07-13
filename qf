@@ -477,7 +477,7 @@ function qf_wiggle_push
 	fi
 
 	for file in $conflict_files ; do
-		echo wiggling in ${file%.rej}:
+		echo wiggling in ${file%.rej}...
 		#cat $file
 		rm -f ${file%.rej}.porig
 		wiggle -r ${file%.rej} $file || true
