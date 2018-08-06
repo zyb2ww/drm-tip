@@ -335,7 +335,8 @@ backmerge *branch* *upstream*
 
 Backmerges *upstream* into *branch*, making a few sanity checks on the way. The
 *upstream* we backmerge should be the same as used for sending out pull requests
-using **pull-request**.
+using **pull-request**. Alternatively it can also be a tag, which if available
+should be preferred.
 
 update-next
 -----------

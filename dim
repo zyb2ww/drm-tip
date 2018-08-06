@@ -1010,11 +1010,14 @@ function dim_backmerge
 	branch=${1:?$usage}
 	upstream=${2:?$usage}
 
+	cd $DIM_PREFIX/drm-tip
+
 	if ! dim_list_upstreams | grep -q "^$upstream\$"; then
-		warn_or_fail "$upstream is not an upstream branch"
+		if ! git rev-parse --verify -q "refs/tags/$upstream" > /dev/null ; then
+			warn_or_fail "$upstream is neither an upstream branch nor a tag"
+		fi
 	fi
 
-	cd $DIM_PREFIX/drm-tip
 	tip_remote=$(repo_to_remote drm-tip)
 	git fetch -q $tip_remote || true
 
