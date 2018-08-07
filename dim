@@ -945,7 +945,7 @@ function dim_apply_branch
 
 function dim_apply_pull
 {
-	local branch file message_id pull_branch rv merge_msg_file
+	local branch file message_id pull_branch rv merge_msg_file from_line
 
 	branch=${1:?$usage}
 	file=$(mktemp)
@@ -956,6 +956,7 @@ function dim_apply_pull
 	cat > $file
 
 	pull_branch=$(sed -ne '/[gG]it repository at:$/{n;n;p}' $file)
+	from_line=$(grep '^From:' $file)
 
 	if [[ -z "$pull_branch" ]] ; then
 		echoerr "no pull request found"
@@ -982,6 +983,7 @@ function dim_apply_pull
 
 			merge_msg_file="$(git_dir)/MERGE_MSG"
 			if [ -n "$message_id" ]; then
+				echo "$from_line" >> $merge_msg_file
 				echo "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id" >> $merge_msg_file
 			fi
 
@@ -994,6 +996,7 @@ function dim_apply_pull
 
 	$DRY git commit --amend -s --no-edit
 	if [ -n "$message_id" ]; then
+		$DRY dim_commit_add_tag "$from_line"
 		$DRY dim_commit_add_tag "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id"
 	fi
 
