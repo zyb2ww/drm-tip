@@ -316,20 +316,6 @@ function dim_uptodate
 	fi
 }
 
-function check_for_updates
-{
-	local stamp stampfile
-
-	stampfile=$HOME/.dim-update-check-timestamp
-
-	# daily check for updates based on file timestamp
-	stamp=$(stat --printf=%Y $stampfile 2>/dev/null || echo -n 0)
-	if [[ $((stamp + 24*60*60)) -lt $(date +%s) ]]; then
-		dim_uptodate || true
-		touch $stampfile
-	fi
-}
-
 function git_fetch_helper # remote
 {
 	local remote
@@ -373,12 +359,34 @@ function git_committer_email
 	echo $committer_email
 }
 
-function git_version_check
+function check_for_updates
+{
+	local stamp stampfile
+
+	stampfile=$HOME/.dim-update-check-timestamp
+
+	# daily check for updates based on file timestamp
+	stamp=$(stat --printf=%Y $stampfile 2>/dev/null || echo -n 0)
+	if [[ $((stamp + 24*60*60)) -lt $(date +%s) ]]; then
+		dim_uptodate || true
+		touch $stampfile
+	fi
+}
+
+function check_git_version
 {
 	local min_version="git version 2.8"
 
 	if ! echo -e "$min_version\n$(git version)" | sort -VC; then
 		echoerr "WARNING: recommended minimum $min_version, you have $(git version)"
+	fi
+}
+
+function check_dim_config
+{
+	if [[ "$DIM_REPO" == "drm-tip" || "$DIM_REPO" == "drm-rerere" || "$DIM_REPO" == "maintainer-tools" ]];  then
+		echoerr "WARNING: setting $DIM_REPO for DIM_REPO not allowed"
+		exit 1
 	fi
 }
 
@@ -2389,6 +2397,8 @@ if [[ -n "${__dim_running:-}" ]]; then
 fi
 export __dim_running=1
 
+check_dim_config
+
 # Commands useful for developers don't need a full dim setup
 if list_developer_commands | grep -qx $subcmd; then
 	if [ -r $DIM_PREFIX/drm-rerere/$dim_integration_config ]; then
@@ -2404,9 +2414,8 @@ else
 
 	read_integration_config
 
-	# occasional check for dim updates
 	check_for_updates
-	git_version_check
+	check_git_version
 fi
 
 # throw away to not confuse list-aliases
