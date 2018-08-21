@@ -262,8 +262,8 @@ branches if "all" is given.
 
 for-each-workdir *command*
 --------------------------
-Run the given command in all active workdirs including the main repository under
-\$DIM_REPO.
+Run the given command in all active workdirs including the main linux kernel
+repository under \$DIM_REPO.
 
 COMMANDS FOR MAINTAINERS
 ========================
@@ -438,12 +438,14 @@ Path prefix for kernel repositories.
 
 DIM_REPO
 --------
-The main maintainer repository under \$DIM_PREFIX.
+The main linux kernel repository under \$DIM_PREFIX.
 
 DIM_MUA
 -------
 Mail user agent. Must support the following subset of **mutt(1)** command line
 options: \$DIM_MUA [-s subject] [-i file] [-c cc-addr] to-addr [...]
+
+This is only needed for sending out pull requests.
 
 DIM_MAKE_OPTIONS
 ----------------

@@ -7,11 +7,12 @@
 # $DIM_REPO, drm-tip, maintainer-tools, etc.
 #DIM_PREFIX=$HOME/linux
 
-# Name of the main maintainer repo under $DIM_PREFIX.
+# Name of the main linux kernel repo under $DIM_PREFIX.
 #DIM_REPO=src
 
 # Mail User Agent supporting a subset of mutt(1) command line options:
 # [-s subject] [-i file] [-c cc-addr] to-addr [...]
+# This is only needed for sending out pull requests
 #DIM_MUA=mutt
 
 # Command to run after dim apply
