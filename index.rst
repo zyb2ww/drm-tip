@@ -30,6 +30,7 @@ Contents:
    getting-started
    dim
    qf
+   CONTRIBUTING
    TODO
 
 Indices and tables
