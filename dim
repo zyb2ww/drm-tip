@@ -1014,12 +1014,12 @@ function dim_apply_pull
 	return $rv
 }
 
-function dim_backmerge
+function validate_upstream_baseline
 {
-	local branch upstream patch_file
+	local branch upstream
 
-	branch=${1:?$usage}
-	upstream=${2:?$usage}
+	branch=${1}
+	upstream=${2}
 
 	cd $DIM_PREFIX/drm-tip
 
@@ -1041,6 +1041,16 @@ function dim_backmerge
 
 	assert_branch $branch
 	assert_repo_clean
+}
+
+function dim_backmerge
+{
+	local branch upstream patch_file
+
+	branch=${1:?$usage}
+	upstream=${2:?$usage}
+
+	validate_upstream_baseline $branch $upstream
 
 	git merge --rerere-autoupdate --no-commit $upstream >& /dev/null || true
 
@@ -1059,7 +1069,7 @@ function dim_backmerge
 
 		HERE
 
-	if git diff | grep -q '\(<<<<<<<\|=======\|>>>>>>>\||||||||\)' ; then
+	if ! check_conflicts "$upstream" ; then
 		echoerr "Conflicts found while merging $upstream into $branch."
 		echoerr "This should only happen when git rerere gets confused"
 		echoerr "or if there's a manual fixup patch in drm-rerere."
@@ -1070,6 +1080,28 @@ function dim_backmerge
 
 	git add -u
 	git commit -s
+}
+
+function dim_rebase
+{
+	local branch upstream patch_file
+
+	branch=${1:?$usage}
+	upstream=${2:?$usage}
+
+	validate_upstream_baseline $branch $upstream
+
+	git rebase --signoff $upstream >& /dev/null || true
+	if ! check_conflicts "$upstream" ; then
+		echoerr "Conflicts found while rebasing $branch onto $upstream."
+		echoerr "Please proceed with extreme caution."
+		echoerr "Resolve the conflict and test it.  Once the conflict "
+		echoerr "is resolved, commit it with: "
+		echoerr "   git commit -a"
+		echoerr "And continue the rebase with: "
+		echoerr "   git rebase --continue"
+		exit 1
+	fi
 }
 
 function dim_add_link

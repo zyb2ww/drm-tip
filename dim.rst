@@ -338,6 +338,14 @@ Backmerges *upstream* into *branch*, making a few sanity checks on the way. The
 using **pull-request**. Alternatively it can also be a tag, which if available
 should be preferred.
 
+rebase *branch* *upstream*
+-----------------------------
+
+Rebases *branch* onto *upstream*, making a few sanity checks on the way. The
+*upstream* we rebase onto should be the same as used for sending out pull requests
+using **pull-request**. Alternatively it can also be a tag, which if available
+should be preferred.
+
 update-next
 -----------
 Pushes out the latest dinq to drm-intel-next and tags it. Also
