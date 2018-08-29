@@ -6,11 +6,11 @@
 
 For getting started grab the latest dim (drm-intel-maintainer) script from::
 
-    http://cgit.freedesktop.org/drm-tip/tree/dim?h=maintainer-tools
+    https://gitlab.freedesktop.org/drm/maintainer-tools/raw/master/dim
 
 There's also a sample config file for ~/.dimrc::
 
-    http://cgit.freedesktop.org/drm-tip/tree/dimrc.sample?h=maintainer-tools
+    https://gitlab.freedesktop.org/drm/maintainer-tools/raw/master/dimrc.sample
 
 Plus, there's bash completion in the same directory if you feel like using that.
 Run::

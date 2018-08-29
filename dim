@@ -76,6 +76,8 @@ dim=$(basename $0)
 dim_today=$(date +%Y-%m-%d)
 dim_timestamp="$(date --utc +%Yy-%mm-%dd-%Hh-%Mm-%Ss) UTC"
 
+maintainer_tools_https=https://gitlab.freedesktop.org/drm/maintainer-tools.git
+
 # Recipients for all dim based pull requests.
 # Add To: lines to the end, Cc: lines in the beginning with -c.
 dim_pull_request_recipients=(
@@ -308,6 +310,8 @@ function dim_uptodate
 		echoerr "could not find the upstream repo for $dim."
 		return 1
 	fi
+
+	git --git-dir=$DIM_PREFIX/maintainer-tools/.git fetch -q
 
 	if ! git --git-dir=$DIM_PREFIX/maintainer-tools/.git show "@{upstream}:dim" |\
 			diff "$using" - >& /dev/null; then
@@ -2028,6 +2032,14 @@ function dim_update_branches
 	fi
 
 	cd $DIM_PREFIX/maintainer-tools
+	if ! git remote | grep -q '^maintainer-tools$' ; then
+		git remote add maintainer-tools $maintainer_tools_https
+		git fetch maintainer-tools
+		git branch --set-upstream-to=maintainer-tools/master
+	else
+		echo "Maintainer tools already migrated."
+	fi
+
 	if git_is_current_branch maintainer-tools ; then
 		echo "Updating maintainer-tools ..."
 		git pull --rebase
@@ -2124,7 +2136,7 @@ function dim_setup
 
 	cd $DIM_PREFIX
 
-	setup_aux_checkout maintainer-tools $drm_tip_ssh maintainer-tools
+	setup_aux_checkout maintainer-tools $maintainer_tools_https maintainer-tools
 
 	setup_aux_checkout rerere-cache $drm_tip_ssh drm-rerere
 
