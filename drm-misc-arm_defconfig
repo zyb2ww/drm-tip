@@ -1,10 +1,10 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm 4.20.0-rc1 Kernel Configuration
+# Linux/arm 4.20.0-rc4 Kernel Configuration
 #
 
 #
-# Compiler: arm-linux-gnueabihf-gcc (Debian 8.2.0-7) 8.2.0
+# Compiler: arm-linux-gnueabihf-gcc (Debian 8.2.0-10) 8.2.0
 #
 CONFIG_CC_IS_GCC=y
 CONFIG_GCC_VERSION=80200
@@ -2802,6 +2802,7 @@ CONFIG_I2C_ALGOBIT=y
 # CONFIG_I2C_ISCH is not set
 # CONFIG_I2C_PIIX4 is not set
 # CONFIG_I2C_NFORCE2 is not set
+CONFIG_I2C_NVIDIA_GPU=m
 # CONFIG_I2C_SIS5595 is not set
 # CONFIG_I2C_SIS630 is not set
 # CONFIG_I2C_SIS96X is not set
