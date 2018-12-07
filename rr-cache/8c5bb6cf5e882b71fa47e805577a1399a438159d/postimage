@@ -1175,17 +1175,19 @@ static void rcs_engine_wa_init(struct intel_engine_cs *engine)
 			    GEN8_L3SQCREG4,
 			    GEN11_LQSC_CLEAN_EVICT_DISABLE);
 
-		/* Wa_1604302699:icl */
-		wa_write_or(wal,
-			    GEN10_L3_CHICKEN_MODE_REGISTER,
-			    GEN11_I2M_WRITE_DISABLE);
-
 		/* WaForwardProgressSoftReset:icl */
 		wa_write_or(wal,
 			    GEN10_SCRATCH_LNCF2,
 			    PMFLUSHDONE_LNICRSDROP |
 			    PMFLUSH_GAPL3UNBLOCK |
 			    PMFLUSHDONE_LNEBLK);
+
+		/* Wa_1406609255:icl (pre-prod) */
+		if (IS_ICL_REVID(i915, ICL_REVID_A0, ICL_REVID_B0))
+			wa_write_or(wal,
+				    GEN7_SARCHKMD,
+				    GEN7_DISABLE_DEMAND_PREFETCH |
+				    GEN7_DISABLE_SAMPLER_PREFETCH);
 	}
 
 	if (IS_GEN9(i915) || IS_CANNONLAKE(i915)) {
