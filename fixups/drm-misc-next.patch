@@ -1,0 +1,14 @@
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+index 1691864bf59b..fd3ed2ce9cb1 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+@@ -1663,7 +1663,8 @@ static int amdgpu_dm_mode_config_init(struct amdgpu_device *adev)
+ 
+ 	dc_resource_state_copy_construct_current(adev->dm.dc, state->context);
+ 
+-	drm_atomic_private_obj_init(&adev->dm.atomic_obj,
++	drm_atomic_private_obj_init(adev->ddev,
++				    &adev->dm.atomic_obj,
+ 				    &state->base,
+ 				    &dm_atomic_state_funcs);
+ 
