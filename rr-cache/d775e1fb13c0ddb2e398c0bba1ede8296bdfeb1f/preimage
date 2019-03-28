@@ -1,0 +1,96 @@
+# drm-tip configuration
+#
+# sourced as a bash script from dim
+
+#
+# drm-tip <repo> to <url list> associative array (declared in dim)
+#
+# <repo> (the key) is a symbolic name used for drm_tip_config, must match
+# [a-z-]+
+#
+# <url list> (the value) is a space separated list of accepted URLs in order of
+# preference
+#
+# dim users may freely choose the remote names and URLs from this list.
+#
+drm_tip_repos[drm-tip]="
+ssh://git.freedesktop.org/git/drm/drm-tip
+ssh://git.freedesktop.org/git/drm-tip
+git://anongit.freedesktop.org/drm/drm-tip
+git://anongit.freedesktop.org/drm-tip
+https://anongit.freedesktop.org/git/drm/drm-tip
+https://anongit.freedesktop.org/git/drm/drm-tip.git
+"
+drm_tip_repos[drm-intel]="
+ssh://git.freedesktop.org/git/drm/drm-intel
+ssh://git.freedesktop.org/git/drm-intel
+git://anongit.freedesktop.org/drm/drm-intel
+git://anongit.freedesktop.org/drm-intel
+https://anongit.freedesktop.org/git/drm/drm-intel
+https://anongit.freedesktop.org/git/drm/drm-intel.git
+"
+drm_tip_repos[drm-misc]="
+ssh://git.freedesktop.org/git/drm/drm-misc
+ssh://git.freedesktop.org/git/drm-misc
+git://anongit.freedesktop.org/drm/drm-misc
+git://anongit.freedesktop.org/drm-misc
+https://anongit.freedesktop.org/git/drm/drm-misc
+https://anongit.freedesktop.org/git/drm/drm-misc.git
+"
+drm_tip_repos[drm-amd]="
+ssh://git.freedesktop.org/git/drm/drm-amd
+git://anongit.freedesktop.org/drm/drm-amd
+https://anongit.freedesktop.org/git/drm/drm-amd
+https://anongit.freedesktop.org/git/drm/drm-amd.git
+"
+drm_tip_repos[drm]="
+ssh://git.freedesktop.org/git/drm/drm
+git://anongit.freedesktop.org/drm/drm
+https://anongit.freedesktop.org/git/drm/drm
+https://anongit.freedesktop.org/git/drm/drm.git
+"
+drm_tip_repos[sound-upstream]="
+git://git.kernel.org/pub/scm/linux/kernel/git/tiwai/sound.git
+https://git.kernel.org/pub/scm/linux/kernel/git/tiwai/sound.git
+https://kernel.googlesource.com/pub/scm/linux/kernel/git/tiwai/sound.git
+"
+drm_tip_repos[linux-upstream]="
+git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git
+"
+
+#
+# drm-tip branch configuration array (declared in dim)
+#
+# Ordered list of branches in repos to merge to the drm-tip integration branch.
+#
+# Each entry is a string in format: <repo> <branch> [<override-sha1>]
+#
+# The closing line is used for scripted updates, do not modify.
+#
+drm_tip_config=(
+	"drm			drm-fixes"
+	"drm-misc		drm-misc-fixes"
+	"drm-intel		drm-intel-fixes"
+	"drm-amd		drm-amd-fixes"
+
+	"drm			drm-next"
+	"drm-misc		drm-misc-next-fixes"
+	"drm-intel		drm-intel-next-fixes"
+	"drm-amd		drm-amd-next-fixes"
+
+	"drm-misc		drm-misc-next"
+	"drm-intel		drm-intel-next-queued"
+	"drm-intel		drm-intel-next"
+	"drm-amd		drm-amd-next"
+
+	"sound-upstream		for-linus"
+	"sound-upstream		for-next"
+	"drm-intel		topic/core-for-CI"
+<<<<<<<
+	"drm-intel		topic/mei-hdcp"
+=======
+	"drm-misc		topic/hdr-formats"
+>>>>>>>
+) # DO NOT CHANGE THIS LINE
