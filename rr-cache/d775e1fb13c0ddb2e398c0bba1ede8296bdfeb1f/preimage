@@ -88,4 +88,9 @@ drm_tip_config=(
 	"sound-upstream		for-linus"
 	"sound-upstream		for-next"
 	"drm-intel		topic/core-for-CI"
+<<<<<<<
+	"drm-intel		topic/mei-hdcp"
+=======
+	"drm-misc		topic/hdr-formats"
+>>>>>>>
 ) # DO NOT CHANGE THIS LINE
