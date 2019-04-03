@@ -1,0 +1,2594 @@
+#!/bin/bash
+#
+# dim - drm inglorious maintainer script
+#
+# Copyright © 2012-2018 Intel Corporation
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice (including the next
+# paragraph) shall be included in all copies or substantial portions of the
+# Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.
+#
+# Authors:
+#    Daniel Vetter <daniel.vetter@ffwll.ch>
+#    Jani Nikula <jani.nikula@intel.com>
+
+# fail on any goof-up
+set -e
+
+#
+# User configuration. Global DIM_ prefixed uppercase variables. Set in
+# environment or configuration file. See dimrc.sample for an example.
+#
+
+# dim configuration file
+DIM_CONFIG=${DIM_CONFIG:-$HOME/.dimrc}
+if [ -r $DIM_CONFIG ]; then
+	# shellcheck source=/dev/null
+	. $DIM_CONFIG
+fi
+
+# prefix for repo directories
+DIM_PREFIX=${DIM_PREFIX:-$HOME/linux}
+
+# main maintainer repo under $DIM_PREFIX
+DIM_REPO=${DIM_REPO:-${DIM_DRM_INTEL:-src}}
+
+# mail user agent. must support a subset of mutt(1) command line options:
+# usage: $DIM_MUA [-s subject] [-i file] [-c cc-addr] to-addr [...]
+DIM_MUA=${DIM_MUA:-mutt}
+
+# make options (not used for C=1)
+DIM_MAKE_OPTIONS=${DIM_MAKE_OPTIONS:--j20}
+
+# command to run after dim apply
+DIM_POST_APPLY_ACTION=${DIM_POST_APPLY_ACTION:-}
+
+# greetings pull request template
+DIM_TEMPLATE_HELLO=${DIM_TEMPLATE_HELLO:-$HOME/.dim.template.hello}
+
+# signature pull request template
+DIM_TEMPLATE_SIGNATURE=${DIM_TEMPLATE_SIGNATURE:-$HOME/.dim.template.signature}
+
+# GPG key id for signing tags. If unset, don't sign.
+DIM_GPG_KEYID=${DIM_GPG_KEYID:+-u $DIM_GPG_KEYID}
+
+#
+# Internal configuration. Global dim_ prefixed variables.
+#
+
+dim=$(basename $0)
+
+dim_today=$(date +%Y-%m-%d)
+dim_timestamp="$(date --utc +%Yy-%mm-%dd-%Hh-%Mm-%Ss) UTC"
+
+maintainer_tools_https=https://gitlab.freedesktop.org/drm/maintainer-tools.git
+
+# Recipients for all dim based pull requests.
+# Add To: lines to the end, Cc: lines in the beginning with -c.
+dim_pull_request_recipients=(
+	-c "Jani Nikula <jani.nikula@linux.intel.com>"
+	-c "Joonas Lahtinen <joonas.lahtinen@linux.intel.com>"
+	-c "Rodrigo Vivi <rodrigo.vivi@intel.com>"
+	-c "Sean Paul <sean@poorly.run>"
+	-c "Maarten Lankhorst <maarten.lankhorst@linux.intel.com>"
+	-c "Maxime Ripard <maxime.ripard@bootlin.com>"
+	-c "dri-devel@lists.freedesktop.org"
+	-c "intel-gfx@lists.freedesktop.org"
+	-c "dim-tools@lists.freedesktop.org"
+	"Dave Airlie <airlied@gmail.com>"
+	"Daniel Vetter <daniel.vetter@ffwll.ch>"
+)
+
+# integration configuration
+dim_integration_config=nightly.conf
+
+#
+# Only function and alias definitions until the command line argument parsing
+# and subcommand handling at the end.
+#
+
+function read_integration_config
+{
+	# clear everything first to allow configuration reload
+	unset drm_tip_repos drm_tip_config
+	declare -g -A drm_tip_repos
+	declare -g -a drm_tip_config
+
+	if [ -r $DIM_PREFIX/drm-rerere/$dim_integration_config ]; then
+		# shellcheck source=/dev/null
+		source $DIM_PREFIX/drm-rerere/$dim_integration_config
+
+		if [[ "${#drm_tip_repos[@]}" = "0" ]] || [[ "${#drm_tip_config[@]}" = "0" ]]; then
+			echoerr "$dim_integration_config not set up correctly, please fix manually"
+			exit 1
+		fi
+	else
+		echoerr "$dim_integration_config is missing, please check your configuration and/or run dim setup"
+		exit 1
+	fi
+
+	dim_branches=
+	for conf in "${drm_tip_config[@]}"; do
+		local repo branch override
+		read -r repo branch override <<< $conf
+		if [[ "$repo" = "drm-intel" || "$repo" = "drm-misc" ]]; then
+			dim_branches="$dim_branches $branch"
+		fi
+	done
+}
+
+function echoerr
+{
+	echo "$dim: $*" >&2
+}
+
+function warn_or_fail
+{
+	if [[ $FORCE ]] ; then
+		echoerr "WARNING: $1, but continuing"
+	elif [[ $DRY ]] ; then
+		echoerr "WARNING: $1, but continuing dry-run"
+	else
+		echoerr "ERROR: $1, aborting"
+		exit 1
+	fi
+}
+
+function pause
+{
+	read -rsp "Press any key to continue..." -n1 key2
+	echo
+}
+
+function ask_user
+{
+	local prompt="$* (y/N) "
+
+	read -n 1 -rsp "$prompt"
+	echo
+	if [[ $REPLY =~ ^[Yy]$ ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+#
+# Variable naming convetion:
+#
+# repo:
+#	symbolic git repository name from $dim_integration_config
+# remote:
+#	local remote name in the git repository for the current path
+# branch:
+#	git branch name - dim assumes that the remote and local name match
+# url:
+#	url to a repo, using ssh:// protocol
+# git_url:
+#	url to a repo, but using anonymous git:// protocol
+#
+# The below functions map between these.
+#
+
+function url_to_remote # url [url ...]
+{
+	local url remote
+
+	if [[ "$#" = "0" ]]; then
+		echoerr "url_to_remote without URLs"
+		return 1
+	fi
+
+	for url; do
+		remote=$(git remote -v | grep -m 1 "$url/\? (" | cut -f 1)
+		if [[ -n "$remote" ]]; then
+			echo "$remote"
+			return 0
+		fi
+	done
+
+	echoerr "No git remote for any of the URLs $* found in $(pwd)"
+
+	url=$1
+	remote=${url%.git}
+	remote=${remote##*/}
+	read -r -i "$remote" -e -p "Enter a name to auto-add this remote, leave blank to abort: " remote
+	if [[ -z "$remote" ]]; then
+		echoerr "Please set it up yourself using:"
+		echoerr "    $ git remote add <name> $url"
+		echoerr "with a name of your choice."
+		return 1
+	fi
+
+	git remote add $remote $url
+
+	echo $remote
+
+	return 0
+}
+
+function pick_protocol_url # (git|ssh|https|whatever) url [url ...]
+{
+	local url protocol protocol_url
+
+	if [[ "$#" -lt "2" ]]; then
+		echoerr "pick_protocol_url without protocol or URLs"
+		return 1
+	fi
+
+	protocol=$1
+	shift
+
+	# Find the URL that has given protocol
+	for url; do
+		case $url in
+			${protocol}://*)
+				protocol_url=$url
+				break
+				;;
+		esac
+	done
+
+	if [[ -z "$protocol_url" ]]; then
+		echoerr "No $protocol URL in any of the URLs: $*"
+		return 1
+	fi
+
+	echo $protocol_url
+}
+
+function branch_to_remote # branch
+{
+	local branch remote repo
+
+	branch=$1
+	repo=$(branch_to_repo $branch)
+
+	if [[ -z "$repo" ]] ; then
+		# fallback for special branches like rerere-cache
+		remote=$(git rev-parse --abbrev-ref --symbolic-full-name "$branch@{upstream}")
+		remote=${remote%%/*}
+	else
+		remote=$(repo_to_remote $repo)
+	fi
+
+	echo $remote
+}
+
+function repo_to_remote # repo
+{
+	local repo url_list
+
+	repo=$1
+	url_list=${drm_tip_repos[$repo]}
+
+	if [[ -z "$url_list" ]]; then
+		echoerr "unknown repo $repo"
+		return 1
+	fi
+
+	url_to_remote $url_list
+}
+
+function branch_to_repo # branch
+{
+	for conf in "${drm_tip_config[@]}"; do
+		local repo branch override
+		read -r repo branch override <<< $conf
+
+		if [[ "$branch" == "$1" ]] ; then
+			echo $repo
+		fi
+	done
+
+	echo ""
+}
+
+function dim_uptodate
+{
+	local using
+
+	using="${BASH_SOURCE[0]}"
+
+	if [[ ! -e "$using" ]]; then
+		echoerr "could not figure out the version being used ($using)."
+		return 1
+	fi
+
+	if [[ ! -e "$DIM_PREFIX/maintainer-tools/.git" ]]; then
+		echoerr "could not find the upstream repo for $dim."
+		return 1
+	fi
+
+	git --git-dir=$DIM_PREFIX/maintainer-tools/.git fetch -q
+
+	if ! git --git-dir=$DIM_PREFIX/maintainer-tools/.git show "@{upstream}:dim" |\
+			diff "$using" - >& /dev/null; then
+		echoerr "not running upstream version of the script."
+		return 1
+	fi
+}
+
+function git_fetch_helper # remote
+{
+	local remote
+
+	remote=$1
+
+	if ! git fetch --prune -q $remote ; then
+		# old git versions returned 128 if there was nothing to fetch
+		if [[ $? -ne "128" ]] ; then
+			echoerr "Failed to fetch $remote"
+			return 1
+		fi
+	fi
+}
+
+function git_current_branch
+{
+	git symbolic-ref -q --short HEAD
+}
+
+function git_is_current_branch # branch
+{
+	test "$(git_current_branch)" = "$1"
+}
+
+function git_branch_exists # branch
+{
+	if [[ "$(git branch --list $1)" == "" ]] ; then
+		false
+	else
+		true
+	fi
+}
+
+# $1: branch
+# $2: upstream
+function git_unmerged_tags
+{
+	local branch upstream
+
+	branch=$1
+	upstream=$2
+
+	# assume branch based tag names, ensure space separated list
+	git log --decorate --pretty=%D "$branch@{upstream}" ^$upstream |\
+		grep -o "tag: $branch-[0-9-]\+" |\
+		sed -e "s/^tag: //" |\
+		tr "\n" " "
+}
+
+function git_committer_email
+{
+	if ! committer_email=$(git config --get user.email) ; then
+		committer_email=${EMAIL-}
+	fi
+
+	echo $committer_email
+}
+
+function check_for_updates
+{
+	local stamp stampfile
+
+	stampfile=$HOME/.dim-update-check-timestamp
+
+	# daily check for updates based on file timestamp
+	stamp=$(stat --printf=%Y $stampfile 2>/dev/null || echo -n 0)
+	if [[ $((stamp + 24*60*60)) -lt $(date +%s) ]]; then
+		dim_uptodate || true
+		touch $stampfile
+	fi
+}
+
+function check_git_version
+{
+	local min_version="git version 2.8"
+
+	if ! echo -e "$min_version\n$(git version)" | sort -VC; then
+		echoerr "WARNING: recommended minimum $min_version, you have $(git version)"
+	fi
+}
+
+function check_dim_config
+{
+	if [[ "$DIM_REPO" == "drm-tip" || "$DIM_REPO" == "drm-rerere" || "$DIM_REPO" == "maintainer-tools" ]];  then
+		echoerr "WARNING: setting $DIM_REPO for DIM_REPO not allowed"
+		exit 1
+	fi
+}
+
+# get message id from file
+# $1 = file
+message_get_id ()
+{
+	python <<EOF
+from email.parser import Parser
+headers = Parser().parse(open('$1', 'r'))
+message_id = headers['message-id']
+if message_id is not None:
+    print(message_id.strip('<>'))
+EOF
+}
+
+message_print_body ()
+{
+	python2 <<EOF
+import email
+
+def print_msg(file):
+    msg = email.message_from_file(file)
+    for part in msg.walk():
+        if part.get_content_type() == 'text/plain':
+            print(part.get_payload(decode=True))
+
+print_msg(open('$1', 'r'))
+EOF
+}
+
+# append all arguments as tags at the end of the commit message of HEAD
+function dim_commit_add_tag
+{
+	for arg; do
+		# the first sed deletes all trailing blank lines at the end
+		git log -1 --pretty=%B | \
+			sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' | \
+			sed "\$a${arg}" | \
+			git commit --amend -F-
+	done
+}
+
+# $1: branch [optional]
+function git_find_tip
+{
+	git log $1 -1 --format=%H --grep="^drm-tip: .* integration manifest$"
+}
+
+# $1: branch [optional]
+function dim_retip
+{
+	local branch upstream new_upstream
+
+	branch="$1"
+
+	if [ -n "$branch" ] ; then
+		shift
+	else
+		branch=$(git symbolic-ref --short HEAD)
+	fi
+
+	if repo_to_remote drm-tip &> /dev/null ; then
+		new_upstream=$(repo_to_remote drm-tip)/drm-tip
+	else
+		new_upstream=$(git branch -r | grep '\/drm-tip$')
+	fi
+	upstream=$(git_find_tip "$branch")
+
+	if [[ -z "$upstream" ]]; then
+		echoerr "$branch is not based on drm-tip"
+		return 1
+	fi
+
+	git rebase --onto $new_upstream $upstream $branch "$@"
+}
+
+function dim_range_diff
+{
+	local branch
+
+	branch=${1:-@\{1\}}
+
+	if [[ $(git rev-parse $branch | wc -l) -eq 1 ]] ; then
+		if [[ $(git rev-parse $branch) == "$branch" ]] ; then
+			branch="@{1}"
+		else
+			shift || true
+		fi
+		git range-diff $branch...HEAD "$@"
+	else
+		git range-diff "$@"
+	fi
+}
+
+# update for-linux-next and for-linux-next-fixes branches
+function update_linux_next # branch next next-fixes fixes
+{
+	local branch linux_next linux_next_fixes linux_fixes repo remote
+
+	cd $DIM_PREFIX/drm-tip
+	branch=$1
+	linux_next=$2
+	linux_next_fixes=$3
+	linux_fixes=$4
+
+	repo=$(branch_to_repo $branch)
+
+	if [[ $repo != $(branch_to_repo $linux_next) ]] ; then
+		return
+	fi
+
+	remote=$(repo_to_remote $repo)
+
+	git_fetch_helper $remote
+
+	# always update drm-intel-fixes
+	echo -n "Pushing $linux_fixes to for-linux-next-fixes... "
+	git push $DRY_RUN $remote +$remote/$linux_fixes:for-linux-next-fixes # >& /dev/null
+	echo "Done."
+
+	if git merge-base --is-ancestor $remote/$linux_next_fixes $remote/$linux_fixes ; then
+		# -fixes has caught up to dinf, i.e. we're out of the merge
+		# window. Push the next queue.
+		echo -n "Out of merge window. Pushing $linux_next to for-linux-next... "
+		git push $DRY_RUN $remote +$remote/$linux_next:for-linux-next >& /dev/null
+		echo "Done."
+	else
+		# dinf is ahead of -fixes, i.e. drm-next has already closed for
+		# the next merge window and we've started to gather new fixes
+		# for the current -next cycle. Push dinf
+
+		echo -n "Pushing $linux_next_fixes to for-linux-next... "
+		git push $DRY_RUN $remote +$remote/$linux_next_fixes:for-linux-next >& /dev/null
+		echo "Done."
+	fi
+}
+
+function check_conflicts # tree
+{
+	if git diff | grep -q '\(<<<<<<<\|=======\|>>>>>>>\||||||||\)' ; then
+		# we need an empty line to make it look pretty
+		echoerr ""
+		echoerr "FAILURE: Could not merge $1"
+		return 1
+	fi
+	true
+}
+
+function git_dir
+{
+	git -C ${1:-$PWD} rev-parse --absolute-git-dir
+}
+
+function pull_rerere_cache
+{
+	cd $DIM_PREFIX/drm-rerere/
+	if ! git_is_current_branch rerere-cache; then
+		echo "Fail: Branch setup for the rerere-cache is borked."
+		exit 1
+	fi
+
+	if ! git pull -q ; then
+		# We raced with someone else hitting the same conflict, or the
+		# erratic git gc for rr-cache entries nuke a few entries we
+		# still want to keep. Clean up and try, but only when the
+		# initial pull fails since otherwise there's no way to keep new
+		# resolutions around.
+		echo "Conflict in the rr-cache, cleaning up"
+		git clean -fdx rr-cache/
+		git checkout -f ':(glob)rr-cache/**'
+
+		if ! git pull -q ; then
+			echoerr "Failed to update the rerere cache."
+			echoerr "Please manually run"
+			echoerr "	$ cd $DIM_PREFIX/drm-rerere ; git pull"
+			echoerr "and fixup any issues."
+
+			return 1
+		fi
+	fi
+	cd - > /dev/null
+}
+
+function update_rerere_cache
+{
+	local rr_cache_dir
+
+	echo -n "Updating rerere cache... "
+
+	pull_rerere_cache
+
+	cd $DIM_PREFIX/drm-tip/
+
+	rr_cache_dir=$(git rev-parse --git-common-dir)/rr-cache
+
+	if [ ! -L $rr_cache_dir ] ; then
+		if [ -d $rr_cache_dir ] ; then
+			rm -Rf $rr_cache_dir
+		fi
+		ln -s "$DIM_PREFIX/drm-rerere/rr-cache" $rr_cache_dir
+	fi
+
+	cd ~-
+
+	echo "Done."
+}
+
+function commit_rerere_cache
+{
+	local remote file commit_message
+
+	echo -n "Finalizing rerere cache... "
+
+	cd $DIM_PREFIX/drm-rerere/
+	remote=$(branch_to_remote rerere-cache)
+
+	pull_rerere_cache
+
+	git add ./*.patch >& /dev/null || true
+	git add fixups/*.patch >& /dev/null || true
+	for file  in $(git ls-files -- rr-cache); do
+		if ! git log --since="60 days ago" --name-only -- $file | grep $file &> /dev/null; then
+			git rm $file &> /dev/null || true
+		fi
+	done
+	find rr-cache/ -mtime -1 -type f -not -name "thisimage*" -print0 | xargs -0 git add > /dev/null || true
+	git rm rr-cache/rr-cache &> /dev/null || true
+
+	commit_message=$(mktemp)
+	cat > $commit_message <<-EOF
+		$dim_timestamp: $integration_branch rerere cache update
+
+		$(git --version)
+		EOF
+
+	if git commit -F $commit_message >& /dev/null; then
+		echo -n "New commit. "
+	else
+		echo -n "Nothing changed. "
+	fi
+	rm $commit_message
+
+	echo -n "Pushing rerere cache... "
+	git push $DRY_RUN $remote HEAD >& /dev/null && echo "Done."
+}
+
+function fetch_all
+{
+	for repo in "${!drm_tip_repos[@]}"; do
+		remote=$(repo_to_remote $repo)
+		if [[ "$repo" = "$remote" ]]; then
+			echo -n "Fetching $repo... "
+		else
+			echo -n "Fetching $repo (local remote $remote)... "
+		fi
+		git_fetch_helper $remote
+		echo "Done."
+	done
+}
+
+function find_fixup_file # repo branch
+{
+	local file_paths repo branch rerere
+	repo=$1
+	branch=$2
+	rerere=$DIM_PREFIX/drm-rerere
+
+	file_paths="$rerere/${repo}-${branch//\//-}-fixup.patch
+	            $rerere/fixups/${branch//\//-}.patch"
+
+	for file_path in $file_paths; do
+		[ -f "$file_path" ] && break
+	done
+
+	echo "$file_path"
+}
+
+function dim_rebuild_tip
+{
+	local integration_branch specfile first rerere repo remote
+
+	integration_branch=drm-tip
+	specfile=$(mktemp)
+	first=1
+
+	rerere=$DIM_PREFIX/drm-rerere
+
+	cd $rerere
+	if git status --porcelain | grep -v "^.. rr-cache" | grep -q -v "^[ ?][ ?]"; then
+		warn_or_fail "integration configuration file $dim_integration_config not committed"
+	fi
+
+	update_rerere_cache
+
+	echo -n "Reloading $dim_integration_config... "
+	read_integration_config
+	echo "Done."
+
+	cd $DIM_PREFIX/$integration_branch
+	if ! git_is_current_branch $integration_branch ; then
+		echo "Branch setup for the integration repo is borked"
+		exit 1
+	fi
+
+	# rerere uses sha1 of the diff to identify conflicts, we must ensure
+	# that they look the same for everyone
+	git config merge.conflictstyle merge
+
+	fetch_all
+
+	# merge -fixes
+	for conf in "${drm_tip_config[@]}"; do
+		local branch override sha1 fixup_file
+
+		read -r repo branch override <<< $conf
+		remote=$(repo_to_remote $repo)
+		sha1=$remote/$branch
+
+		if [[ "$repo" = "$remote" ]]; then
+			echo -n "Merging $repo/$branch... "
+		else
+			echo -n "Merging $repo/$branch (local remote $remote)... "
+		fi
+
+		if [[ -n "$override" ]]; then
+			sha1=$override
+			echo -n "Using override sha1: $sha1... "
+		fi
+
+		if [ $first == 1 ] ; then
+			git reset --hard $sha1 &> /dev/null
+			echo "Reset. Done."
+			first=0
+		elif git merge --rerere-autoupdate --ff-only $sha1 >& /dev/null ; then
+			# nothing to do if just fast-forward
+			echo "Fast-forward. Done."
+			true
+		else
+			fixup_file=$(find_fixup_file $repo $branch)
+			echo $branch > .fixup_branch
+
+			git merge --rerere-autoupdate --no-commit $sha1 >& /dev/null || true
+			# normalize conflict markers
+			if git grep -l '^>>>>>>> ' &> /dev/null ; then
+				git grep -l '^>>>>>>> ' | xargs sed -e "s|^>>>>>>> .*$|>>>>>>> $repo\/$branch|" -i
+			fi
+
+			if [ -f $fixup_file ] ; then
+				echo -n "Applying manual fixup patch for $integration_branch merge... "
+				patch -p1 -i $fixup_file
+			fi
+			if ! check_conflicts "$repo/$branch" ; then
+				echoerr "See the section \"Resolving Conflicts when Rebuilding drm-tip\""
+				echoerr "in the drm-tip.rst documentation for how to handle this situation."
+				return 1
+			fi
+			git add -u
+
+			# because we filter out fast-forward merges there will
+			# always be something to commit
+			git commit --no-edit --quiet --no-verify
+			echo "Done."
+		fi
+
+		echo -e "$repo $branch $(git rev-parse $sha1)\n\t$(git log -1 $sha1 --pretty=format:%s)" >> $specfile
+
+		$INTERACTIVE
+	done
+
+	echo -n "Adding integration manifest $integration_branch: $dim_timestamp... "
+	mv $specfile integration-manifest
+	git add integration-manifest
+	git commit --quiet -m "$integration_branch: $dim_timestamp integration manifest"
+	echo "Done."
+
+	remote=$(repo_to_remote drm-tip)
+
+	echo -n "Pushing $integration_branch... "
+	git push $DRY_RUN $remote +HEAD >& /dev/null && echo "Done."
+
+	commit_rerere_cache
+}
+
+function checkpatch_fixes_tag
+{
+	local sha1 fixes_lines cite rv fline
+
+	sha1=$1
+	rv=0
+	fixes_lines=$(git log -1 --format='%B' "$sha1" | grep -i '^[[:space:]]*Fixes:')
+	cite=$(dim_cite $sha1)
+
+	echo "$fixes_lines" | ( local rv; rv=0 ; while read -r fline; do
+		local fixes_sha1 fixes_subject orig_subject
+		if [[ -z "$fline" ]] ; then
+			continue
+		fi
+
+		[[ "$fline" =~ ^[[:space:]]*[Ff][Ii][Xx][Ee][Ss]:[[:space:]]*(.*)$ ]]
+		fline="${BASH_REMATCH[1]}"
+
+		if [[ ! "$fline" =~ ^[[:space:]]*([[:xdigit:]]{5,})[[:space:]]*(.*)$ ]]; then
+			echoerr "$cite: Malformed fixes line:"
+			echoerr "    $fline"
+			rv=1
+			continue
+		fi
+		fixes_sha1="${BASH_REMATCH[1]}"
+		fixes_subject="${BASH_REMATCH[2]}"
+
+		if ! git rev-parse --verify -q $fixes_sha1 > /dev/null ; then
+			echoerr "$cite: SHA1 in fixes line not found:"
+			echoerr "    $fline"
+			rv=1
+			continue
+		fi
+		if ! git merge-base --is-ancestor $fixes_sha1 $sha1 ; then
+			echoerr "$cite: Fixes: SHA1 in not pointing at an ancestor:"
+			echoerr "    $fline"
+			rv=1
+			continue
+		fi
+		if ! echo $fixes_sha1 | grep -q '[[:xdigit:]]\{12\}' ; then
+			echoerr "$cite: Fixes: SHA1 needs at least 12 digits:"
+			echoerr "    $fline"
+			rv=1
+			continue
+		fi
+		orig_subject=$(git show -s $fixes_sha1 --format="format:%s")
+		if [[ "$fixes_subject" != "(\"$orig_subject\")" ]] ; then
+			echoerr "$cite: Subject in fixes line doesn't match referenced commit:"
+			echoerr "    $fline"
+			rv=1
+			continue
+		fi
+
+	done ; exit $rv )
+
+	rv=$?
+
+	return $rv
+}
+
+# drops the user to a shell for recovery
+function recovery_shell
+{
+	echo "dropping to recovery shell; exit once issue is resolved"
+	$SHELL <&- < /dev/tty
+}
+
+# additional patch checks before pushing, e.g. for r-b tags
+function checkpatch_commit_push
+{
+	local sha1 managed_branch rv author committer author_outlook cite
+
+	sha1=$1
+	managed_branch=$2
+	rv=0
+
+	cite=$(dim_cite $sha1)
+
+	# use real names for people with many different email addresses
+	author=$(git show -s $sha1 --format="format:%an")
+	committer=$(git show -s $sha1 --format="format:%cn")
+	# outlook mangles mails into "Last, First"
+	author_outlook=$(git show -s $sha1 --format="format:%an" | sed -e 's/\([^ ]*\) \(.*\)/\2, \1/')
+
+
+	# check for fd.o mailman From: mangling
+	if git show -s $sha1 --format="format:%ae %ce"| grep -q '@lists\.freedesktop\.org' ; then
+		echoerr "$cite: mailman wrangled email address detected."
+		rv=1
+	fi
+
+	# check for author sign-off
+	if ! git show -s $sha1 | grep -qi "Signed-off-by:.*\\($author\\|$author_outlook\\)" ; then
+		echoerr "$cite: author Signed-off-by missing."
+		rv=1
+	fi
+
+	# check for committer sign-off
+	if ! git show -s $sha1 | grep -qi "Signed-off-by:.*$committer"  ; then
+		echoerr "$cite: committer Signed-off-by missing."
+		rv=1
+	fi
+
+	# check for Link tag
+	if [[ "$managed_branch" = "1" ]] && ! git show -s $sha1 | grep -qi 'Link:'  ; then
+		echoerr "$cite: Link tag missing."
+		rv=1
+	fi
+
+	# check for a-b/r-b tag
+	if ! git show -s $sha1 | grep -qi '\(reviewed\|acked\)\S*-by:' && \
+	   ! [[ "$committer" != "$author" ]]; then
+		echoerr "$cite: mandatory review missing."
+		rv=1
+	fi
+
+	if ! checkpatch_fixes_tag $sha1 ; then
+		rv=1
+	fi
+
+	return $rv
+}
+
+function checkmerge_commit_push
+{
+	local sha1 managed_branch rv body_text cite
+
+	sha1=$1
+	managed_branch=${2}
+	rv=0
+
+	cite=$(dim_cite $sha1)
+
+	body_text="$(git show $sha1 -s --format="format:%b" | grep -v "^$" | grep -v "^\S*:")"
+
+	if [[ -z "$body_text" ]] ; then
+		echoerr "$cite: merge commit justification missing."
+		rv=1
+	fi
+
+	return $rv
+}
+
+function checkpatch_commit_push_range
+{
+	local rv managed_branch
+
+	managed_branch=$1
+	shift
+	rv=0
+
+	for sha1 in $(git rev-list "$@" --no-merges) ; do
+		checkpatch_commit_push $sha1 $managed_branch || rv=1
+	done
+
+	for sha1 in $(git rev-list "$@" --merges) ; do
+		checkmerge_commit_push $sha1 $managed_branch || rv=1
+	done
+
+	if [ $rv == "1" ] ; then
+		warn_or_fail "issues in commits detected"
+	fi
+}
+
+# push branch $1, rebuild drm-tip. the rest of the arguments are passed to git
+# push.
+function dim_push_branch
+{
+	local branch remote committer_email count
+
+	branch=${1:?$usage}
+	shift
+
+	assert_branch $branch
+
+	remote=$(branch_to_remote $branch)
+
+	committer_email=$(git_committer_email)
+
+	checkpatch_commit_push_range 1 "$branch@{u}..$branch" --first-parent --committer="$committer_email"
+
+	# Apart from maintainers pushing merges or rebases, most patches should
+	# be pushed in small batches.
+	count=$(git rev-list --count --first-parent "$branch@{u}..$branch")
+	if [[ $count -gt 10 ]]; then
+		if ! ask_user "Pushing $count commits. Are you sure?"; then
+			echoerr "NOTE: Branch not pushed."
+			return 1
+		fi
+	fi
+
+	git push $DRY_RUN $remote $branch "$@"
+
+	update_linux_next $branch drm-intel-next-queued drm-intel-next-fixes drm-intel-fixes
+	update_linux_next $branch drm-misc-next drm-misc-next-fixes drm-misc-fixes
+	update_linux_next $branch drm-amd-next drm-amd-next-fixes drm-amd-fixes
+
+	dim_rebuild_tip
+}
+
+dim_alias_pq=push-queued
+function dim_push_queued
+{
+	dim_push_branch drm-intel-next-queued "$@"
+}
+
+dim_alias_pnf=push-next-fixes
+function dim_push_next_fixes
+{
+	dim_push_branch drm-intel-next-fixes "$@"
+}
+
+dim_alias_pf=push-fixes
+function dim_push_fixes
+{
+	dim_push_branch drm-intel-fixes "$@"
+}
+
+function dim_push
+{
+	dim_push_branch $(git_current_branch) "$@"
+}
+
+function apply_patch #patch_file
+{
+	local patch message_id committer_email patch_from sob rv
+
+	patch="$1"
+	shift
+	message_id=$(message_get_id $patch)
+	committer_email=$(git_committer_email)
+
+	patch_from=$(grep "From:" "$patch" | head -1)
+	if [[ "$patch_from" != *"$committer_email"* ]] ; then
+		sob=-s
+	fi
+
+	if ! git am --scissors -3 $sob "$@" $patch ; then
+		recovery_shell
+	fi
+
+	if [ -n "$message_id" ]; then
+		dim_commit_add_tag "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id"
+	else
+		echoerr "WARNING: No message-id found in the patch file."
+		rv=1
+	fi
+
+	if ! checkpatch_commit HEAD branch; then
+		rv=1
+	fi
+	if ! check_maintainer $branch HEAD; then
+		rv=1
+	fi
+
+	eval $DRY $DIM_POST_APPLY_ACTION
+	return $rv
+}
+
+function check_merge_baseline
+{
+	local pull_sha1 baseline_sha1 upstream_sha1
+	pull_sha1=$1
+	baseline_sha1=$2
+	upstream_sha1=$3
+
+	# the merge base between the pull and upstream is supposed to be in our
+	# tree already
+	if ! git merge-base --is-ancestor $(git merge-base $pull_sha1 $upstream_sha1) $baseline_sha1 ; then
+		echoerr "Pull request contains commits from $upstream_sha1"
+		echoerr "Please backmerge first"
+
+		warn_or_fail "Issues in pull request detected"
+	fi
+}
+
+# ensure we're on branch $1, and apply patches. the rest of the arguments are
+# passed to git am.
+dim_alias_ab=apply-branch
+dim_alias_sob=apply-branch
+function dim_apply_branch
+{
+	local branch file rv
+
+	branch=${1:?$usage}
+	shift
+	file=$(mktemp)
+	dir=$(mktemp -d)
+
+	assert_branch $branch
+	assert_repo_clean
+
+	cat > $file
+	git mailsplit -b -o$dir $file > /dev/null
+
+	for patch in "$dir"/*; do
+		if ! apply_patch $patch "$@"; then
+			rv=1
+		fi
+	done
+	rm -rf $file $dir
+
+	return $rv
+}
+
+function dim_apply_pull
+{
+	local branch file message_id pull_branch rv merge_msg_file from_line
+
+	branch=${1:?$usage}
+	file=$(mktemp)
+
+	assert_branch $branch
+	assert_repo_clean
+
+	cat > $file
+
+	pull_branch=$(message_print_body "$file" |
+		sed -ne '/[gG]it repository at:$/,/for you to fetch/{p}' |
+		sed -ne '3,$p' | sed -ne '0,/^$/p' | tr '\n' ' ')
+
+	from_line=$(grep '^From:' $file)
+
+	if [[ -z "$pull_branch" ]] ; then
+		echoerr "no pull request found"
+		return 1
+	fi
+
+	message_id=$(message_get_id $file)
+	if [ -z "$message_id" ]; then
+		warn_or_fail "No message-id found in the pull request file."
+	fi
+
+	echo Pulling $pull_branch ...
+
+	git fetch $pull_branch
+	if [[ -z "$(git rev-list HEAD..FETCH_HEAD)" ]] ; then
+		warn_or_fail "Nothing in the pull request"
+	fi
+
+	check_merge_baseline FETCH_HEAD $branch $(branch_to_remote drm-fixes)/drm-fixes
+	check_merge_baseline FETCH_HEAD $branch origin/master
+
+	checkpatch_commit_push_range 0 "HEAD..FETCH_HEAD"
+
+	if ! $DRY git pull --no-ff $pull_branch ; then
+		if ! check_conflicts "$pull_branch" ; then
+			echoerr "Please resolve and then commit normally using git"
+
+			merge_msg_file="$(git_dir)/MERGE_MSG"
+			if [ -n "$message_id" ]; then
+				echo "$from_line" >> $merge_msg_file
+				echo "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id" >> $merge_msg_file
+			fi
+
+			return 1
+		else
+			$DRY git add -u
+			$DRY git commit --no-edit --quiet
+		fi
+	fi
+
+	$DRY git commit --amend -s --no-edit
+	if [ -n "$message_id" ]; then
+		$DRY dim_commit_add_tag "$from_line"
+		$DRY dim_commit_add_tag "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id"
+	fi
+
+
+	eval $DRY $DIM_POST_APPLY_ACTION
+
+	return $rv
+}
+
+function validate_upstream_baseline
+{
+	local branch upstream
+
+	branch=${1}
+	upstream=${2}
+
+	cd $DIM_PREFIX/drm-tip
+
+	if ! dim_list_upstreams | grep -q "^$upstream\$"; then
+		if ! git rev-parse --verify -q "refs/tags/$upstream" > /dev/null ; then
+			warn_or_fail "$upstream is neither an upstream branch nor a tag"
+		fi
+	fi
+
+	tip_remote=$(repo_to_remote drm-tip)
+	git fetch -q $tip_remote || true
+
+	if ! git merge-base --is-ancestor $upstream $tip_remote/drm-tip ; then
+		echoerr "Upstream $upstream not merged into drm-tip, aborting."
+		echoerr "Please make sure any backmerge is tested in drm-tip,"
+		echoerr "to give all the CI bots some time to find bugs."
+		exit 1
+	fi
+
+	assert_branch $branch
+	assert_repo_clean
+}
+
+function dim_backmerge
+{
+	local branch upstream patch_file
+
+	branch=${1:?$usage}
+	upstream=${2:?$usage}
+
+	validate_upstream_baseline $branch $upstream
+
+	git merge --rerere-autoupdate --no-commit $upstream >& /dev/null || true
+
+	patch_file=$(git_dir)/MERGE_MSG
+
+
+	cat > $patch_file <<-HERE
+		Merge $upstream into $branch
+
+		*** DETAILED BACKMERGE RATIONALE HERE ***
+
+		HERE
+
+	if ! check_conflicts "$upstream" ; then
+		echoerr "Conflicts found while merging $upstream into $branch."
+		echoerr "This should only happen when git rerere gets confused"
+		echoerr "or if there's a manual fixup patch in drm-rerere."
+		echoerr "Please proceed with extreme caution."
+		echoerr "Once the conflict is resolved, commit it with"
+		echoerr "   git commit -a"
+	fi
+
+	git add -u
+	git commit -s
+}
+
+function dim_rebase
+{
+	local branch upstream patch_file
+
+	branch=${1:?$usage}
+	upstream=${2:?$usage}
+
+	validate_upstream_baseline $branch $upstream
+
+	git rebase --signoff $upstream >& /dev/null || true
+	if ! check_conflicts "$upstream" ; then
+		echoerr "Conflicts found while rebasing $branch onto $upstream."
+		echoerr "Please proceed with extreme caution."
+		echoerr "Resolve the conflict and test it.  Once the conflict "
+		echoerr "is resolved, commit it with: "
+		echoerr "   git commit -a"
+		echoerr "And continue the rebase with: "
+		echoerr "   git rebase --continue"
+		exit 1
+	fi
+}
+
+function dim_add_link
+{
+	local branch file message_id
+
+	branch=${1:?$usage}
+	shift
+	file=$(mktemp)
+
+	assert_branch $branch
+	assert_repo_clean
+
+	cat > $file
+
+	message_id=$(message_get_id $file)
+
+	rm -f $file
+
+	if [[ -n "$message_id" ]]; then
+		dim_commit_add_tag "Link: https://patchwork.freedesktop.org/patch/msgid/$message_id"
+	else
+		echoerr "No message-id found in the patch file."
+	fi
+}
+
+function dim_add_link_queued
+{
+	dim_add_link drm-intel-next-queued "$@"
+}
+
+function dim_add_link_fixes
+{
+	dim_add_link drm-intel-fixes "$@"
+}
+
+function dim_add_link_next_fixes
+{
+	dim_add_link drm-intel-next-fixes "$@"
+}
+
+dim_alias_aq=apply-queued
+function dim_apply_queued
+{
+	dim_apply_branch drm-intel-next-queued "$@"
+}
+
+function dim_apply_fixes
+{
+	dim_apply_branch drm-intel-fixes "$@"
+}
+
+function dim_apply_next_fixes
+{
+	dim_apply_branch drm-intel-next-fixes "$@"
+}
+
+# apply patch to current branch, the rest of the arguments are passed to
+# git am
+dim_alias_am=apply
+function dim_apply
+{
+	dim_apply_branch $(git_current_branch) "$@"
+}
+
+function commit_list_references
+{
+	local commit remote log
+
+	cd $DIM_PREFIX/drm-tip
+	remote=$(repo_to_remote drm-tip)
+	git fetch -q $remote || true
+
+	commit="$1"
+	log=$(mktemp)
+
+	git log --regexp-ignore-case --grep="${commit:0:8}" --oneline \
+	    $commit..$remote/drm-tip > $log
+
+	if [ "$(cat $log)" != "" ]; then
+		echo "Commit ${commit:0:8} is referenced by later commits:"
+		sed 's/^/\t/' < $log
+	fi
+
+	rm -f $log
+
+	cd - >/dev/null
+}
+
+function dim_cherry_pick
+{
+	local commit
+
+	commit=$(git rev-parse ${1:?$usage})
+
+	git_fetch_helper $remote
+
+	commit_list_references $commit
+
+	$DRY git cherry-pick -s -x -e $commit
+}
+
+function git_list_fixes
+{
+	git log --reverse --format=format:%H --regexp-ignore-case \
+	    --grep="^Cc:.*stable@vger\.kernel\.org" \
+	    --grep="^Fixes: " \
+	    "$@"
+}
+
+function cherry_pick_branch
+{
+	local branch log fail_log intel_remote needed have_fixes
+
+	branch=${1:?$usage}
+	log=$(mktemp)
+	fail_log=$(mktemp)
+
+	intel_remote=$(repo_to_remote drm-intel)
+
+	# Look for commits in dinq tagged as fixes.
+	for commit in $(git_list_fixes $intel_remote/$branch..$intel_remote/drm-intel-next-queued -- drivers/gpu/drm/i915); do
+		echo -n "Considering $(dim_cite $commit)... "
+
+		# Look at history for already cherry-picked fixes.
+		# Note: use *local* branches to account for unpushed commits.
+		git log drm-intel-fixes --format=format:%h --after=6months \
+		    --grep="cherry picked .* $commit" > $log
+		if [ "$(cat $log)" = "" ]; then
+			git log drm-intel-next-fixes --format=format:%h --after=6months \
+			    --grep="cherry picked .* $commit" > $log
+		fi
+
+		if [ "$(cat $log)" != "" ]; then
+			echo "Already backported as $(tr "\n" " " < $log). OK."
+			continue
+		fi
+
+		have_fixes=
+		needed=
+		for fixes in $(git show -s $commit | grep -i "^    Fixes: *[0-9a-fA-F]" | sed 's/^ *[Ff]ixes: *\([0-9a-fA-F]\+\).*/\1/'); do
+			have_fixes=1
+			fixes=$(git log -1 --format=format:%H $fixes 2>/dev/null || true)
+			if [[ -z "$fixes" ]]; then
+				continue
+			fi
+
+			# FIXME: see if the commit to be fixed has been
+			# backported!
+			echo -n "Fixes: $(dim_cite $fixes). "
+			if [[ "$(git merge-base $branch $fixes)" = "$fixes" ]]; then
+				needed=1
+			fi
+		done
+
+		# Note: Cc: stable will overrule Fixes:
+		if [[ -n "$have_fixes" && -z "$needed" ]]; then
+			echo "Fixes a commit not in $branch. OK."
+			continue
+		fi
+
+		echo "Try to cherry-pick."
+		commit_list_references $commit
+		if ! git cherry-pick -x -s $commit; then
+			echo "FAILED: $(dim_cite $commit)"
+			(dim_cite $commit) >> $fail_log
+			git cherry-pick --abort
+		fi
+	done
+
+	# FIXME: evolve this into an email report to commit authors etc.
+	if [ "$(cat $fail_log)" != "" ]; then
+		echo "Failed to cherry-pick:"
+		cat $fail_log
+	fi
+
+	rm -f $log $fail_log
+}
+
+function dim_cherry_pick_fixes
+{
+	assert_branch drm-intel-fixes
+	cherry_pick_branch drm-intel-fixes "$@"
+}
+
+function dim_cherry_pick_next_fixes
+{
+	assert_branch drm-intel-next-fixes
+	cherry_pick_branch drm-intel-next-fixes "$@"
+}
+
+dim_alias_ar=apply-resolved
+function dim_apply_resolved
+{
+	make $DIM_MAKE_OPTIONS && git add -u && git am --resolved
+	checkpatch_commit HEAD || true
+
+	eval $DRY $DIM_POST_APPLY_ACTION
+}
+
+dim_alias_mrr=magic-rebase-resolve
+function dim_magic_rebase_resolve
+{
+	git diff HEAD | patch -p1 -R
+	dim_magic_patch < $(git_dir)/rebase-merge/patch
+	make $DIM_MAKE_OPTIONS
+	git add -u
+	git rebase --continue
+}
+
+dim_alias_mp=magic-patch
+function dim_magic_patch
+{
+	local conflict_files
+
+	if [[ "$1" = "-a" ]]; then
+		cd $(cat ~/.dim-last-path)
+	fi
+
+	conflict_files=$(patch -p1 | grep "saving rejects" | sed -e "s/.*saving rejects to file \(.*\)/\1/")
+
+	if [[ $conflict_files != "" ]] ; then
+		echo conflicts found!
+	fi
+
+	for file in $conflict_files ; do
+		echo wiggling in ${file%.rej}:
+		#cat $file
+		rm -f ${file%.rej}.porig
+		wiggle -r ${file%.rej} $file || true
+	done
+}
+
+function dim_create_branch
+{
+	local branch repo remote
+
+	branch=${1:?$usage}
+	start=${2:-HEAD}
+
+	cd $DIM_PREFIX/$DIM_REPO
+
+	repo=${branch%%/*}
+	branch=${branch#*/}
+	if [[ "$repo" = "$branch" ]]; then
+		echoerr "give branch in format repo/branch"
+		return 1
+	fi
+
+	remote=$(repo_to_remote $repo)
+	if git branch -r | grep -q "$remote/$branch"; then
+		echoerr "$branch already exists on $remote"
+		return 1
+	fi
+
+	$DRY git branch $branch $start
+
+	# git push gives confusing error messages for non-existing branches,
+	# even with --dry-run, hence the even quieter $DRY
+	$DRY git push $remote +$branch --set-upstream
+
+	cd $DIM_PREFIX/drm-rerere
+	$DRY sed -i "s/^\() # DO NOT CHANGE THIS LINE\)$/\t\"$repo\t\t${branch//\//\\\/}\"\n\1/" $dim_integration_config
+
+	$DRY git add $dim_integration_config
+	$DRY git commit --quiet -m "Add $repo $branch to $dim_integration_config"
+}
+
+function dim_remove_branch
+{
+	local branch repo remote
+
+	branch=${1:?$usage}
+
+	cd $DIM_PREFIX/$DIM_REPO
+
+	if [[ -d $DIM_PREFIX/$branch ]] ; then
+		rm -R $DIM_PREFIX/$branch
+		git worktree prune &> /dev/null || true
+	fi
+
+	if git_branch_exists $branch && ! $DRY git branch -d $branch; then
+		warn_or_fail "Can't remove $branch in working repo"
+	fi
+
+	cd $DIM_PREFIX/drm-tip
+
+	repo=$(branch_to_repo $branch)
+
+	if [[ $repo == "" ]] ; then
+		echoerr "$branch not found in $dim_integration_config"
+		exit 1
+	fi
+
+	remote=$(repo_to_remote $repo)
+
+	git push $DRY_RUN $remote --delete $branch
+	$DRY git fetch $remote --prune
+	cd $DIM_PREFIX/drm-rerere
+	$DRY sed -i "/^[[:space:]]*\"${repo}[[:space:]]\+${branch//\//\\\/}.*$/d" $dim_integration_config
+
+	$DRY git add $dim_integration_config
+	$DRY git commit --quiet -m "Remove $repo $branch from $dim_integration_config"
+
+	dim_rebuild_tip
+}
+
+function dim_cd
+{
+	local path
+
+	if [[ -d $DIM_PREFIX/$1 ]] ; then
+		path=$DIM_PREFIX/$1
+	else
+		path=$DIM_PREFIX/$DIM_REPO
+	fi
+
+	echo $path > ~/.dim-last-path
+	cd $path
+}
+
+dim_alias_co=checkout
+function dim_checkout
+{
+	local branch repo remote
+
+	branch=${1:?$usage}
+
+	dim_cd $branch
+	if ! git_branch_exists $branch ; then
+		repo=$(branch_to_repo $branch)
+
+		if [[ $repo == "" ]] ; then
+			echoerr "$branch not found in $dim_integration_config"
+			exit 1
+		fi
+
+		remote=$(repo_to_remote $repo)
+
+		if [ "$remote" == "" ] ; then
+			exit 1
+		fi
+		git_fetch_helper $remote
+		git checkout -t $remote/$branch
+	else
+		git checkout $branch
+	fi
+}
+
+function dim_conq
+{
+	dim_checkout drm-intel-next-queued "$@"
+}
+
+function dim_cof
+{
+	dim_checkout drm-intel-fixes "$@"
+}
+
+function dim_conf
+{
+	dim_checkout drm-intel-next-fixes "$@"
+}
+
+# $1 branch
+# $2 commit
+function check_maintainer
+{
+	local branch commit rv
+
+	branch=$1
+	commit=$2
+
+        if [ "$branch" = "drm-intel-next-queued" ]; then
+		if non_i915_files=$(git diff-tree --no-commit-id --name-only -r $commit | \
+			grep -v "^\(drivers/gpu/drm/i915/\|include/drm/i915\|include/uapi/drm/i915\|Documentation/gpu/i915\)") && [[ -n "$non_i915_files" ]]; then
+			echo -e "The following files are outside of i915 maintenance scope:\n"
+			echo "$non_i915_files"
+			echo -e "\nConfirm you have appropriate Acked-by and Reviewed-by for above files."
+			rv=1
+		fi
+	fi
+
+	return $rv
+}
+
+# $1 is the git sha1 to check
+# $2 is the checkpatch profile
+function checkpatch_commit
+{
+	local commit rv checkpatch_options profile profile_options
+
+	commit=$1
+	profile=${2:-default}
+
+	# special branch profile maps branches to profiles
+	if [[ "$profile" = "branch" ]]; then
+		case "$(git_current_branch)" in
+			drm-intel-next-queued|drm-intel-next-fixes|drm-intel-fixes)
+				profile=drm-intel
+				;;
+			drm-misc-next|drm-misc-next-fixes|drm-misc-fixes)
+				profile=drm-misc
+				;;
+			*)
+				profile=default
+				;;
+		esac
+	fi
+
+	# map profiles to checkpatch options
+	case "$profile" in
+		default)
+			profile_options=""
+			;;
+		drm-misc)
+			profile_options=""
+			;;
+		drm-intel)
+			profile_options="--max-line-length=100 --ignore=BIT_MACRO,SPLIT_STRING,LONG_LINE_STRING,BOOL_MEMBER"
+			;;
+		*)
+			echoerr "Unknown checkpatch profile $profile"
+			profile_options=""
+			;;
+	esac
+
+	checkpatch_options="-q --emacs --strict --show-types $profile_options -"
+
+	git --no-pager log --oneline -1 $commit
+	if ! git show --pretty=email $commit |\
+			scripts/checkpatch.pl $checkpatch_options; then
+		rv=1
+	fi
+
+	return $rv
+}
+
+# turn $1 in to a git commit range
+function rangeish()
+{
+	if [ -z "$1" ]; then
+		echo "HEAD^..HEAD"
+	elif echo "$1" | grep -q '\.\.'; then
+		echo "$1"
+	else
+		echo "$1..HEAD"
+	fi
+}
+
+function dim_extract_tags
+{
+	local branch range file tags
+
+	branch=${1:?$usage}
+	range=$(rangeish "${2:-}")
+	file=$(mktemp)
+
+	assert_branch $branch
+	assert_repo_clean
+
+	cat > $file
+
+	tags=$(message_print_body "$file" | grep -ai '^[^>]*[A-Za-z-]\+: [^ ]')
+
+	rm -f $file
+
+	if [[ -z "$tags" ]]; then
+		return 0
+	fi
+
+	tags=$(printf -- "# *** extracted tags ***\n%s" "$tags")
+
+	git filter-branch -f --msg-filter "cat ; echo \"$tags\"" $range
+}
+
+function dim_extract_queued
+{
+	dim_extract_tags drm-intel-next-queued "$@"
+}
+
+function dim_extract_fixes
+{
+	dim_extract_tags drm-intel-fixes "$@"
+}
+
+function dim_extract_next_fixes
+{
+	dim_extract_tags drm-intel-next-fixes "$@"
+}
+
+dim_alias_cp=checkpatch
+function dim_checkpatch
+{
+	local range profile rv
+
+	range=$(rangeish "${1:-}")
+	profile=${2:-}
+
+	for commit in $(git rev-list --reverse $range); do
+		if ! checkpatch_commit $commit $profile; then
+			rv=1
+		fi
+	done
+
+	return $rv
+}
+
+function _restore_head_on_exit
+{
+	local original_ref
+
+	original_ref="$(git rev-parse --abbrev-ref HEAD)"
+
+	if [ "$original_ref" == "HEAD" ]; then
+		original_ref="$(git rev-parse HEAD)"
+	fi
+
+	# we want to expand this now
+	# shellcheck disable=SC2064
+	trap "git checkout -q $original_ref" EXIT
+}
+
+function dim_sparse
+{
+	local range rv sr prev_sr prev_remapped diff_result remap_log commits
+
+	range=$(rangeish "${1:-}")
+	remap_log=$DIM_PREFIX/maintainer-tools/remap-log
+
+	if [ ! -e  $remap_log ]; then
+		echo "$remap_log is not compailed, please run make in maintainer-tools dir!"
+		exit 1
+	fi
+
+	echo "Sparse version: $(sparse --version)"
+
+	_restore_head_on_exit
+
+	# make the initial reference build
+	commits=( $(git rev-list --reverse $range) )
+	git checkout --detach  ${commits[0]}~ > /dev/null 2>&1
+	make -j8 drivers/gpu/drm/ > /dev/null 2>&1
+
+	for commit in "${commits[@]}"; do
+		touch --no-create $(git diff --name-only $commit~...$commit)
+		prev_sr="$(make C=1 -j$(nproc) drivers/gpu/drm/ 2>&1 1>/dev/null | sort)"
+
+		git checkout --detach $commit >/dev/null 2>&1
+		sr="$(make C=1 -j$(nproc) drivers/gpu/drm/ 2>&1 1>/dev/null | sort)"
+
+		prev_remapped="$(echo "$prev_sr" | $remap_log <(git diff HEAD~ | $remap_log))"
+		diff_result="$(diff -u <(echo "$prev_remapped") <(echo "$sr") || true)"
+
+		echo "Commit: $(git log -n1 --format='%s' $commit)"
+		if [ -n "$diff_result" ]; then
+			echo "$diff_result" | grep -E '^[+-]' | grep -E -v '^[+-]{3}'
+		else
+			echo "Okay!"
+		fi
+		echo
+
+		if (echo "$diff_result" | grep -q '^+'); then
+			rv=1
+		fi
+
+		prev_sr="$sr"
+	done
+
+	return $rv
+}
+
+function dim_checker
+{
+	rm -f drivers/gpu/drm/i915/*.o drivers/gpu/drm/i915/*.ko
+	make C=1 drivers/gpu/drm/i915/i915.ko
+}
+
+function prep_pull_mail_greetings
+{
+	if [ -r $DIM_TEMPLATE_HELLO ]; then
+		cat $DIM_TEMPLATE_HELLO
+	fi
+}
+
+function prep_pull_mail_signature
+{
+	if [ -r $DIM_TEMPLATE_SIGNATURE ]; then
+		cat $DIM_TEMPLATE_SIGNATURE
+	fi
+}
+
+# print pull mail overview based on tags in $@, if any
+# without tags, print a reminder
+function prep_pull_mail_overview
+{
+	local obj
+
+	if [ "$#" = "0" ]; then
+		echo "*** PULL REQUEST OVERVIEW HERE ***"
+	else
+		for tag in "$@"; do
+			obj=$(git rev-parse $tag)
+			if [[ "$(git cat-file -t $obj)" == "tag" ]] ; then
+				echo $tag:
+				git cat-file -p $obj | tail -n+6 | sed -n '/^-----BEGIN PGP SIGNATURE-----$/q;p'
+			fi
+		done
+	fi
+}
+
+# prepare a pull request mail
+# $@: tags, if any, to extract into the pull request overview
+function prep_pull_mail
+{
+	local file
+	file=$1
+	shift
+	prep_pull_mail_greetings > $file
+	prep_pull_mail_overview "$@" >> $file
+	prep_pull_mail_signature >> $file
+}
+
+function dim_create_workdir
+{
+	local branch branches
+
+	branches=${1:?$usage}
+
+	if [[ "$branches" = "all" ]]; then
+		branches=$dim_branches
+	fi
+
+	cd $DIM_PREFIX
+
+	for branch in $branches ; do
+		if [[ -d $branch ]] ; then
+			continue;
+		fi
+
+		echo Creating separate workdir for $branch
+
+		if git help worktree &> /dev/null; then
+			# native worktree support was added in git 2.5
+			cd $DIM_REPO
+			$DRY git worktree prune
+			$DRY git worktree add $DIM_PREFIX/$branch $branch
+			cd $DIM_PREFIX
+		else
+			$DRY git-new-workdir $DIM_REPO $branch $branch
+		fi
+	done
+}
+
+dim_alias_fw=for-each-workdir
+function dim_for_each_workdir
+{
+	cd $DIM_PREFIX/$DIM_REPO
+	"$@"
+	for branch in $dim_branches ; do
+		if [[ -d $DIM_PREFIX/$branch ]] ; then
+			cd $DIM_PREFIX/$branch
+			"$@"
+		fi
+	done
+}
+
+function tag_name
+{
+	local prefix suffix tag
+	prefix=$1
+	tag="$prefix-$dim_today"
+	while git tag -l $tag | grep -q $tag ; do
+		tag="$prefix-$dim_today-$((++suffix))"
+	done
+	echo "$tag"
+}
+
+function tag_summary # branch
+{
+	local branch tag_template
+	branch=$1
+	tag_template=$DIM_PREFIX/drm-rerere/tag-templates/${branch//\//-}.txt
+
+	if [ -r $tag_template ]; then
+		cat $tag_template
+	else
+		cat <<-EOF
+		UAPI Changes:
+
+		Cross-subsystem Changes:
+
+		Core Changes:
+
+		Driver Changes:
+
+		EOF
+	fi
+}
+
+function tag_branch
+{
+	local tag branch
+	tag=$1
+	branch=$2
+
+	tag_summary $branch | $DRY git tag -F- $tag "$branch@{upstream}"
+	$DRY git tag -a $DIM_GPG_KEYID -f $tag
+}
+
+# $1: commit subject prefix
+# $2: file
+function dim_update_driver_date
+{
+	local prefix file driver_date driver_timestamp
+
+	prefix=${1:?$usage}
+	file=${2:?$usage}
+
+	driver_date=$(date +%Y%m%d)
+	driver_timestamp=$(date +%s)
+
+	$DRY sed -i -e "s/^#define DRIVER_DATE.*\"[0-9]*\"$/#define DRIVER_DATE\t\t\"$driver_date\"/; s/^#define DRIVER_TIMESTAMP.*/#define DRIVER_TIMESTAMP\t$driver_timestamp/" "$file"
+	$DRY git add "$file"
+	git commit $DRY_RUN -sm "$prefix: Update DRIVER_DATE to $driver_date"
+}
+
+function dim_update_next
+{
+	assert_branch drm-intel-next-queued
+
+	git pull --ff-only
+
+	dim_update_driver_date "drm/i915" "drivers/gpu/drm/i915/i915_drv.h"
+
+	gitk --first-parent drm-intel-next-queued ^$(branch_to_remote drm-next)/drm-next &
+
+	# try to push dinq first in case someone raced
+	FORCE=1 dim_push_queued
+
+	dim_update_next_continue
+}
+
+function dim_update_next_continue
+{
+	local remote tag
+
+	assert_branch drm-intel-next-queued
+
+	remote=$(repo_to_remote drm-intel)
+
+	git push $DRY_RUN -f $remote drm-intel-next-queued:drm-intel-next
+	tag=$(tag_name "drm-intel-next")
+
+	tag_branch $tag drm-intel-next
+	git push $DRY_RUN $remote $tag
+}
+
+function dim_tag_branch
+{
+	local branch upstream remote tag unmerged_tags
+
+	branch=${1:?$usage}
+	upstream=$2
+	assert_branch $branch
+	remote=$(branch_to_remote $branch)
+
+	cd $DIM_PREFIX/$DIM_REPO
+
+	git fetch $remote
+
+	if [ $(git rev-parse $branch) != $(git rev-parse "$branch@{u}") ]; then
+		echoerr "ERROR: $branch not up-to-date"
+		return 1
+	fi
+
+	echo "Tagging current $branch"
+
+	if [[ -n "$upstream" ]]; then
+		# If there are unmerged tags, show changes since last
+		unmerged_tags=$(git_unmerged_tags "$branch" "$upstream")
+		if [[ -n "$unmerged_tags" ]]; then
+			upstream="${unmerged_tags%% *}"
+		fi
+
+		gitk --first-parent "$branch" "^$upstream" &
+	fi
+
+	tag=$(tag_name "$branch")
+	tag_branch $tag $branch
+	git push $DRY_RUN $remote $tag
+}
+
+function dim_tag_next
+{
+	dim_tag_branch "drm-intel-next"
+}
+
+# dim_pull_request branch upstream
+function dim_pull_request
+{
+	local branch upstream remote repo req_file url_list git_url tag
+
+	branch=${1:?$usage}
+	upstream=${2:?$usage}
+	remote=$(branch_to_remote $branch)
+	req_file=$(mktemp)
+
+	if [ "$branch" != "drm-intel-next" ]; then
+		assert_branch $branch
+	else
+		cd $DIM_PREFIX/$DIM_REPO
+	fi
+
+	git_fetch_helper ${upstream%%/*}
+	echo "Using $upstream as the upstream"
+
+	if [ "$branch" = "drm-intel-next" ]; then
+		# drm-intel-next pulls have been tagged using dim update-next
+		drm_intel_next_tags=$(git_unmerged_tags "$branch" "$upstream")
+		prep_pull_mail $req_file $drm_intel_next_tags
+		tag=$(git describe --all --exact "$branch@{upstream}")
+
+		repo="drm-intel"
+	else
+		tag=$(tag_name "$branch")
+		gitk --first-parent "$branch" ^$upstream &
+		tag_branch $tag $branch
+		$DRY git push $remote $tag
+		prep_pull_mail $req_file $tag
+
+		repo=$(branch_to_repo $branch)
+	fi
+
+	url_list=${drm_tip_repos[$repo]}
+	git_url=$(pick_protocol_url git $url_list)
+
+	git request-pull $upstream $git_url $tag >> $req_file
+	$DRY $DIM_MUA -s "[PULL] $branch" \
+	     -i $req_file "${dim_pull_request_recipients[@]}"
+}
+
+function dim_pull_request_next
+{
+	upstream=${1:-$(branch_to_remote drm-next)/drm-next}
+	dim_pull_request drm-intel-next $upstream
+}
+
+function dim_pull_request_fixes
+{
+	upstream=${1:-origin/master}
+	dim_pull_request drm-intel-fixes $upstream
+}
+
+function dim_pull_request_next_fixes
+{
+	upstream=${1:-$(branch_to_remote drm-next)/drm-next}
+	dim_pull_request drm-intel-next-fixes $upstream
+}
+
+# Note: used by bash completion
+function dim_list_upstreams
+{
+	cd $DIM_PREFIX/$DIM_REPO
+
+	echo origin/master
+	echo $(branch_to_remote drm-next)/drm-next
+	echo $(branch_to_remote drm-fixes)/drm-fixes
+}
+
+# Note: used by bash completion
+function dim_list_branches
+{
+	echo $dim_branches | sed 's/ /\n/g'
+}
+
+dim_alias_ub=update-branches
+function dim_update_branches
+{
+	local repo remote intel_remote
+
+	cd $DIM_PREFIX/$DIM_REPO
+
+	fetch_all
+
+	assert_repo_clean
+
+	for branch in $dim_branches ; do
+		if ! git_branch_exists $branch ; then
+			continue
+		fi
+		dim_checkout $branch
+		repo=$(branch_to_repo $branch)
+		remote=$(repo_to_remote $repo)
+
+		if ! $DRY git merge --ff-only $remote/$branch; then
+			$DRY git rebase -i
+		fi
+	done
+
+	cd $DIM_PREFIX/maintainer-tools
+	if git_is_current_branch master || git_is_current_branch maintainer-tools; then
+		echo "Updating maintainer-tools..."
+		git pull --rebase
+	fi
+
+	update_rerere_cache
+}
+
+function dim_status
+{
+	local repo remote patches
+	local drm_next_upstream drm_fixes_upstream
+
+	cd $DIM_PREFIX/$DIM_REPO
+
+	fetch_all
+
+	for branch in $dim_branches ; do
+		repo=$(branch_to_repo $branch)
+		remote=$(repo_to_remote $repo)
+		drm_next_upstream=$(branch_to_remote drm-fixes)/drm-fixes
+		drm_fixes_upstream=$(branch_to_remote drm-next)/drm-next
+
+		patches=$(git log --oneline $remote/$branch ^origin/master \
+			^$drm_next_upstream ^$drm_fixes_upstream | wc -l)
+
+		if [[ $patches -ne 0 ]] ; then
+			echo $repo/$branch: $patches unmerged patches
+		fi
+	done
+}
+
+function setup_aux_checkout # name url directory
+{
+	local name url dir remote
+
+	name=$1
+	url=$2
+	dir=$3
+
+	echo "Setting up $dir ..."
+
+	if [ ! -d $dir ]; then
+		if git help worktree &> /dev/null ; then
+			cd $DIM_PREFIX/$DIM_REPO
+			remote=$(url_to_remote $url)
+			if ! git_branch_exists $name ; then
+				git_fetch_helper $remote
+				git branch --track $name $remote/$name
+			fi
+			git worktree add $DIM_PREFIX/$dir $name
+		else
+			git clone --reference=$DIM_PREFIX/$DIM_REPO/.git $url $dir
+			cd $dir
+			git config remote.origin.url $url
+			echo "$(git_dir $DIM_PREFIX/$DIM_REPO)/objects" > $(git_dir)/objects/info/alternates
+			git repack -a -d -l
+			remote=origin
+		fi
+	else
+		cd $dir
+		remote=$(url_to_remote $url)
+	fi
+	if ! git_branch_exists $name ; then
+		git checkout -t $remote/$name
+	fi
+	cd - > /dev/null
+}
+
+function dim_setup
+{
+	local remote drm_tip_ssh linux_upstream_git
+
+	drm_tip_ssh=ssh://git.freedesktop.org/git/drm-tip
+	linux_upstream_git=git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+
+	if [[ ! -d "$DIM_PREFIX" ]]; then
+		if ask_user "The DIM_PREFIX repository directory '$DIM_PREFIX' doesn't exist. Create?"; then
+			mkdir -p "$DIM_PREFIX"
+		else
+			echoerr "Please set up your DIM_PREFIX repository directory with"
+			echoerr "    mkdir -p $DIM_PREFIX"
+			echoerr "or update your configuration (see dimrc.sample)."
+			exit 1
+		fi
+	fi
+
+	cd $DIM_PREFIX
+
+	if [[ ! -d "$DIM_REPO" ]]; then
+		if ask_user "The DIM_REPO maintainer kernel repository '$DIM_REPO' doesn't exist. Clone upstream?"; then
+			git clone "$linux_upstream_git" "$DIM_REPO"
+		fi
+	fi
+
+	if [[ ! -d "$(git_dir $DIM_REPO)" ]]; then
+		echoerr "No kernel git checkout found in '$DIM_REPO'."
+		echoerr "Please set up your DIM_REPO maintainer kernel repository at '$DIM_REPO' with:"
+		echoerr "    cd $DIM_PREFIX"
+		echoerr "    git clone $linux_upstream_git $DIM_REPO"
+		echoerr "or update your configuration (see dimrc.sample)."
+		exit 1
+	fi
+
+	if [[ ! -d "$(git_dir maintainer-tools)" ]]; then
+		echoerr "No maintainer-tools git checkout found in 'maintainer-tools'."
+		echoerr "dim update will not work. Please fix."
+	fi
+
+	setup_aux_checkout rerere-cache $drm_tip_ssh drm-rerere
+
+	setup_aux_checkout drm-tip $drm_tip_ssh drm-tip
+
+	dim_update_branches
+
+	echo "dim setup successfully completed!"
+}
+
+function assert_branch
+{
+	local branch
+
+	branch=$1
+
+	dim_cd $branch
+
+	if git_is_current_branch $branch ; then
+		return 0
+	else
+		echo "You're on the wrong branch, expected $branch in $PWD"
+		return 1
+	fi
+}
+
+function assert_repo_clean
+{
+	if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+		echo "Repository not clean, aborting."
+		exit 1
+	fi
+}
+
+# Note: used by bash completion
+function dim_list_commands
+{
+	declare -F | grep -o " dim_[a-zA-Z_]*" | sed 's/^ dim_//;s/_/-/g'
+}
+
+# Note: used by bash completion
+function dim_list_aliases
+{
+	# use posix mode to omit functions in set output
+	( set -o posix; set ) | grep "^dim_alias_[a-zA-Z0-9_]*=" |\
+		sed 's/^dim_alias_//;s/=/\t/;s/_/-/g'
+}
+
+# Commands that do not require full setup
+function list_developer_commands
+{
+	local -a developer_commands
+
+	developer_commands=(
+		# developer commands
+		# these should match the developer section in dim.rst
+		"checker"
+		"checkpatch"
+		"cite"
+		"fixes"
+		"retip"
+		"range-diff"
+		"sparse"
+		"tc"
+		# help commands
+		"help"
+		"usage"
+		# include setup
+		"setup"
+	)
+
+	printf "%s\n" "${developer_commands[@]}"
+}
+
+function dim_cat_to_fixup # [branch]
+{
+	local fixup_file repo branch
+	branch=$1
+
+	cd $DIM_PREFIX/drm-tip
+
+	if [ -z "$branch" ]; then
+		branch=$(cat .fixup_branch)
+	fi
+
+	repo=$(branch_to_repo $branch)
+	fixup_file=$(find_fixup_file $repo $branch)
+
+	cat > $fixup_file
+	echo "Applied fixup for $branch"
+}
+
+function dim_tc
+{
+	local sha1 tag conf remote_branches
+
+	sha1=${1:?$usage}
+
+	cd $DIM_PREFIX/$DIM_REPO
+	tag=$(git tag --contains $sha1 | grep ^v | sort -V | head -n 1)
+	if [[ -n "$tag" ]]; then
+		echo "$tag"
+		return 0
+	fi
+
+	# not in a tagged release, show upstream branches
+	remote_branches="origin/master"
+	for conf in "${drm_tip_config[@]}"; do
+		local repo branch override remote
+
+		read -r repo branch override <<< $conf
+		remote=$(repo_to_remote $repo)
+
+		remote_branches="$remote_branches $remote/$branch"
+	done
+
+	git branch -r --contains $sha1 $remote_branches | sed 's/^ *//' | sort
+}
+
+function dim_cite
+{
+	local sha1
+
+	sha1=${1:?$usage}
+
+	git --git-dir="$DIM_PREFIX/$DIM_REPO/.git" log -1 $sha1 \
+	    "--pretty=format:%H (\"%s\")%n" | \
+		sed -e 's/\([0-f]\{12\}\)[0-f]*/\1/'
+}
+
+function dim_fixes
+{
+	local sha1 tag
+
+	sha1=${1:?$usage}
+
+	cd $DIM_PREFIX/$DIM_REPO
+	echo "Fixes: $(dim_cite $sha1)"
+
+	(
+		git show --no-patch $sha1 | \
+			sed -e 's/\(Reviewed\|Acked\|Reported\|Signed\)[a-zA-Z-]*-by:/Cc:/' | \
+			sed -e 's/^    C[Cc]: */Cc: /' | grep '^Cc: '
+		git show $sha1 | scripts/get_maintainer.pl  --email --norolestats --pattern-depth 1 | sed -e "s/^/Cc: /"
+	) | awk '!x[$0]++'
+
+	tag=$(git tag --contains $sha1 | grep ^v | sort -V | head -n 1)
+	if [[ -n "$tag" ]]; then
+		if ! echo "$tag" | grep -q -e "-rc"; then
+			echo "Cc: <stable@vger.kernel.org> # ${tag}+"
+		fi
+	fi
+}
+
+function dim_add_missing_cc
+{
+	local email name matches
+
+	git show | scripts/get_maintainer.pl --email --norolestats --pattern-depth 1 | while read -r cc; do
+		email="$(echo "$cc" | sed -e 's/.*<//' -e 's/>.*//')"
+		name=''
+
+		if echo "$cc" | grep -q '<'; then
+			name="$(echo ${cc/<*/} | sed -e 's/[[:space:]]*\$//')";
+		fi
+
+		# Don't add main mailing lists
+		if [[ "$email" = "dri-devel@lists.freedesktop.org" || \
+		      "$email" = "linux-kernel@vger.kernel.org}" ]]; then
+			continue
+		fi
+
+		# Variables from the while loop don't propagate,
+		# print out a 1 on success
+		matches=$(
+			git show -s | grep -i "^    Cc:" | sed 's/^ *[Cc][Cc]: *//' | while read -r testcc; do
+				testemail="$(echo "$testcc" | sed -e 's/.*<//' -e 's/>.*//')"
+
+				if [ "$testemail" != "$email" ]; then
+					if [ -z "$name" ]; then continue; fi
+
+					testname="$(echo ${testcc/<*/} | sed -e 's/[[:space:]]*\$//' -e 's/^[[:space:]]*//')"
+
+					if [ "$testname" != "$name" ]; then continue; fi
+				fi
+
+				echo 1
+				break
+			done
+		)
+
+		if [ -z "$matches" ]; then
+			$DRY dim_commit_add_tag "Cc: ${cc}"
+		fi
+	done
+}
+
+function dim_help
+{
+	manpage=$DIM_PREFIX/maintainer-tools/dim.rst
+	if [ ! -e "$manpage" ]; then
+		manpage=$(dirname $(readlink -f $0))/dim.rst
+		if [ ! -e "$manpage" ]; then
+			echo "Can't find the man page. See http://cgit.freedesktop.org/drm-tip/tree/dim.rst?h=maintainer-tools"
+			exit 1
+		fi
+	fi
+
+	if hash rst2man 2>/dev/null; then
+		renderer="rst2man"
+		pager="man -l -"
+	else
+		renderer="cat"
+		pager=${PAGER:-cat}
+	fi
+
+	$renderer < $manpage | $pager
+}
+
+function dim_usage
+{
+	echo "usage: $dim [OPTIONS] SUBCOMMAND [ARGUMENTS]"
+	echo
+	echo "The available subcommands are:"
+	if hash column 2>/dev/null; then
+		dim_list_commands | column -c 72 | sed 's/^/\t/'
+	else
+		dim_list_commands | sed 's/^/\t/'
+	fi
+	echo
+	echo "See '$dim help' for more information."
+}
+
+#
+# Command line options. Global short uppercase variables.
+#
+
+DRY_RUN=
+INTERACTIVE=
+DRY=
+FORCE=
+HELP=
+
+while getopts hdfis opt; do
+	case "$opt" in
+		d)
+			DRY_RUN=--dry-run
+			DRY="echo"
+			;;
+		f)
+			FORCE=1
+			;;
+		i)
+			INTERACTIVE=pause
+			;;
+		h)
+			HELP=1
+			;;
+		s)
+			# FIXME: transitional, do unconditionally at the top
+			# when there are no more errors about unbound variables
+			set -u
+			;;
+		*)
+			echoerr "See '$dim help' for more information."
+			exit
+	esac
+done
+shift $((OPTIND - 1))
+
+# first positional argument is the subcommand
+if [ -n "$HELP" ] || [ "$#" = "0" ]; then
+	subcommand="usage"
+else
+	subcommand="$1"
+	shift
+fi
+
+# generic usage to be used for ${1:?$usage} style argument references
+usage="Missing arguments(s) for '$dim $subcommand'. See '$dim help' for usage."
+
+# dim subcommand aliases (with bash 4.3+)
+if ! declare -n subcmd=dim_alias_${subcommand//-/_} &> /dev/null || \
+		test -z "${subcmd:-}"; then
+	subcmd="$subcommand"
+fi
+
+# look up the function by the subcommand name
+subcmd_func=dim_${subcmd//-/_}
+if ! declare -f $subcmd_func >/dev/null; then
+	echoerr "'$subcommand' is not a dim command."
+	dim_usage
+	exit 1
+fi
+
+#
+# Sanity checks.
+#
+
+# Make sure we use 'dim_foo' within dim instead of 'dim foo'.
+if [[ -n "${__dim_running:-}" ]]; then
+	echoerr "INTERNAL ERROR: do not recurse back to dim"
+	exit 1
+fi
+export __dim_running=1
+
+check_dim_config
+
+# Commands useful for developers don't need a full dim setup
+if list_developer_commands | grep -qx $subcmd; then
+	if [ -r $DIM_PREFIX/drm-rerere/$dim_integration_config ]; then
+		read_integration_config
+	fi
+else
+	for d in $DIM_PREFIX $DIM_PREFIX/$DIM_REPO $DIM_PREFIX/drm-rerere $DIM_PREFIX/drm-tip; do
+		if [ ! -d $d ]; then
+			echoerr "$d is missing, please check your configuration and/or run dim setup"
+			exit 1
+		fi
+	done
+
+	read_integration_config
+
+	check_for_updates
+	check_git_version
+fi
+
+# throw away to not confuse list-aliases
+unset subcmd
+
+$subcmd_func "$@"
