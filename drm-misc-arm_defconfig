@@ -4317,6 +4317,7 @@ CONFIG_DRM_MALI_DISPLAY=m
 CONFIG_DRM_KOMEDA=m
 # CONFIG_DRM_RADEON is not set
 # CONFIG_DRM_AMDGPU is not set
+CONFIG_DRM_ASPEED_GFX=m
 
 #
 # ACP (Audio CoProcessor) Configuration
