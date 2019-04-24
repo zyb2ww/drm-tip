@@ -1,0 +1,16 @@
+diff --git a/drivers/gpu/drm/virtio/virtgpu_prime.c b/drivers/gpu/drm/virtio/virtgpu_prime.c
+index 0f670fc6c954..8fbf71bd0c5e 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_prime.c
++++ b/drivers/gpu/drm/virtio/virtgpu_prime.c
+@@ -40,11 +40,6 @@ struct sg_table *virtgpu_gem_prime_get_sg_table(struct drm_gem_object *obj)
+ 				     bo->tbo.ttm->num_pages);
+ }
+ 
+-struct sg_table *virtgpu_gem_prime_get_sg_table(struct drm_gem_object *obj)
+-{
+-	return ERR_PTR(-ENODEV);
+-}
+-
+ struct drm_gem_object *virtgpu_gem_prime_import_sg_table(
+ 	struct drm_device *dev, struct dma_buf_attachment *attach,
+ 	struct sg_table *table)
