@@ -1,0 +1,76 @@
+diff --git b/tools/testing/selftests/netfilter/nft_nat.sh a/tools/testing/selftests/netfilter/nft_nat.sh
+index bc35dd85c546..21159f5f3362 100755
+--- b/tools/testing/selftests/netfilter/nft_nat.sh
++++ a/tools/testing/selftests/netfilter/nft_nat.sh
+@@ -396,7 +396,7 @@ EOF
+ 		echo "ERROR: cannot ping ns1 from ns2 with active $family masquerading"
+ =======
+ 		echo "ERROR: cannot ping ns1 from ns2 with active ipv6 masquerade $natflags"
+->>>>>>> sound-upstream/for-next
++>>>>>>> cd8dead0c39457e58ec1d36db93aedca811d48f1
+ 		lret=1
+ 	fi
+ 
+@@ -443,7 +443,7 @@ EOF
+ 	fi
+ 
+ 	ip netns exec ns0 nft flush chain ip6 nat postrouting
+->>>>>>> sound-upstream/for-next
++>>>>>>> cd8dead0c39457e58ec1d36db93aedca811d48f1
+ 	if [ $? -ne 0 ]; then
+ 		echo "ERROR: Could not flush $family nat postrouting" 1>&2
+ 		lret=1
+@@ -453,7 +453,7 @@ EOF
+ 	test $lret -eq 0 && echo "PASS: $family IPv6 masquerade for ns2"
+ =======
+ 	test $lret -eq 0 && echo "PASS: IPv6 masquerade $natflags for ns2"
+->>>>>>> sound-upstream/for-next
++>>>>>>> cd8dead0c39457e58ec1d36db93aedca811d48f1
+ 
+ 	return $lret
+ }
+@@ -464,7 +464,7 @@ test_masquerade()
+ 	local family=$1
+ =======
+ 	local natflags=$1
+->>>>>>> sound-upstream/for-next
++>>>>>>> cd8dead0c39457e58ec1d36db93aedca811d48f1
+ 	local lret=0
+ 
+ 	ip netns exec ns0 sysctl net.ipv4.conf.veth0.forwarding=1 > /dev/null
+@@ -513,7 +513,7 @@ EOF
+ 		echo "ERROR: cannot ping ns1 from ns2 with active $family masquerading"
+ =======
+ 		echo "ERROR: cannot ping ns1 from ns2 with active ip masquere $natflags"
+->>>>>>> sound-upstream/for-next
++>>>>>>> cd8dead0c39457e58ec1d36db93aedca811d48f1
+ 		lret=1
+ 	fi
+ 
+@@ -559,7 +559,7 @@ EOF
+ 	fi
+ 
+ 	ip netns exec ns0 nft flush chain ip nat postrouting
+->>>>>>> sound-upstream/for-next
++>>>>>>> cd8dead0c39457e58ec1d36db93aedca811d48f1
+ 	if [ $? -ne 0 ]; then
+ 		echo "ERROR: Could not flush $family nat postrouting" 1>&2
+ 		lret=1
+@@ -569,7 +569,7 @@ EOF
+ 	test $lret -eq 0 && echo "PASS: $family IP masquerade for ns2"
+ =======
+ 	test $lret -eq 0 && echo "PASS: IP masquerade $natflags for ns2"
+->>>>>>> sound-upstream/for-next
++>>>>>>> cd8dead0c39457e58ec1d36db93aedca811d48f1
+ 
+ 	return $lret
+ }
+@@ -856,7 +856,7 @@ test_masquerade6 ""
+ reset_counters
+ test_masquerade "fully-random"
+ test_masquerade6 "fully-random"
+->>>>>>> sound-upstream/for-next
++>>>>>>> cd8dead0c39457e58ec1d36db93aedca811d48f1
+ 
+ reset_counters
+ test_redirect ip
