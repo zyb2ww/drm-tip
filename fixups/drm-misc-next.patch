@@ -1,0 +1,13 @@
+diff --git a/drivers/gpu/drm/amd/display/dc/clk_mgr/clk_mgr.c b/drivers/gpu/drm/amd/display/dc/clk_mgr/clk_mgr.c
+index eb2204d42337..cb3f6a74d9e3 100644
+--- a/drivers/gpu/drm/amd/display/dc/clk_mgr/clk_mgr.c
++++ b/drivers/gpu/drm/amd/display/dc/clk_mgr/clk_mgr.c
+@@ -23,6 +23,8 @@
+  *
+  */
+ 
++#include <linux/slab.h>
++
+ #include "dal_asic_id.h"
+ #include "dc_types.h"
+ #include "dccg.h"
