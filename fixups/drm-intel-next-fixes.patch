@@ -1,0 +1,35 @@
+diff --git a/drivers/gpu/drm/i915/gem/i915_gem_object.h b/drivers/gpu/drm/i915/gem/i915_gem_object.h
+index 4577dc563d3e..086a9bf5adcc 100644
+--- a/drivers/gpu/drm/i915/gem/i915_gem_object.h
++++ b/drivers/gpu/drm/i915/gem/i915_gem_object.h
+@@ -170,12 +170,6 @@ i915_gem_object_never_bind_ggtt(const struct drm_i915_gem_object *obj)
+ 	return i915_gem_object_type_has(obj, I915_GEM_OBJECT_NO_GGTT);
+ }
+ 
+-static inline bool
+-i915_gem_object_never_bind_ggtt(const struct drm_i915_gem_object *obj)
+-{
+-	return obj->ops->flags & I915_GEM_OBJECT_NO_GGTT;
+-}
+-
+ static inline bool
+ i915_gem_object_needs_async_cancel(const struct drm_i915_gem_object *obj)
+ {
+diff --git a/drivers/gpu/drm/i915/gt/intel_lrc.c b/drivers/gpu/drm/i915/gt/intel_lrc.c
+index 89da62a79e72..a2155d6bcdd2 100644
+--- a/drivers/gpu/drm/i915/gt/intel_lrc.c
++++ b/drivers/gpu/drm/i915/gt/intel_lrc.c
+@@ -252,13 +252,6 @@ static void mark_eio(struct i915_request *rq)
+ 	i915_request_mark_complete(rq);
+ }
+ 
+-static void mark_eio(struct i915_request *rq)
+-{
+-	if (!i915_request_signaled(rq))
+-		dma_fence_set_error(&rq->fence, -EIO);
+-	i915_request_mark_complete(rq);
+-}
+-
+ static inline u32 intel_hws_preempt_address(struct intel_engine_cs *engine)
+ {
+ 	return (i915_ggtt_offset(engine->status_page.vma) +
