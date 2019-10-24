@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86 5.4.0-rc1 Kernel Configuration
+# Linux/x86 5.4.0-rc4 Kernel Configuration
 #
 
 #
@@ -3681,7 +3681,6 @@ CONFIG_USB_OHCI_HCD_PCI=m
 # CONFIG_USB_EMI26 is not set
 # CONFIG_USB_ADUTUX is not set
 # CONFIG_USB_SEVSEG is not set
-# CONFIG_USB_RIO500 is not set
 # CONFIG_USB_LEGOTOWER is not set
 # CONFIG_USB_LCD is not set
 # CONFIG_USB_CYPRESS_CY7C63 is not set
@@ -4043,7 +4042,6 @@ CONFIG_STAGING_MEDIA=y
 # CONFIG_FIREWIRE_SERIAL is not set
 # CONFIG_GS_FPGABOOT is not set
 # CONFIG_UNISYSSPAR is not set
-# CONFIG_FB_TFT is not set
 # CONFIG_PI433 is not set
 
 #
@@ -4875,7 +4873,6 @@ CONFIG_NLATTR=y
 CONFIG_CLZ_TAB=y
 # CONFIG_IRQ_POLL is not set
 CONFIG_MPILIB=y
-CONFIG_DIMLIB=y
 CONFIG_OID_REGISTRY=y
 CONFIG_UCS2_STRING=y
 CONFIG_HAVE_GENERIC_VDSO=y

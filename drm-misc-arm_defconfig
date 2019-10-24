@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm 5.4.0-rc1 Kernel Configuration
+# Linux/arm 5.4.0-rc4 Kernel Configuration
 #
 
 #
@@ -5696,7 +5696,6 @@ CONFIG_USB_ISP1760_DUAL_ROLE=y
 # CONFIG_USB_EMI26 is not set
 # CONFIG_USB_ADUTUX is not set
 # CONFIG_USB_SEVSEG is not set
-# CONFIG_USB_RIO500 is not set
 # CONFIG_USB_LEGOTOWER is not set
 # CONFIG_USB_LCD is not set
 # CONFIG_USB_CYPRESS_CY7C63 is not set
@@ -5746,6 +5745,7 @@ CONFIG_USB_GADGET_STORAGE_NUM_BUFFERS=2
 # USB Peripheral Controller
 #
 # CONFIG_USB_AT91 is not set
+# CONFIG_USB_LPC32XX is not set
 # CONFIG_USB_ATMEL_USBA is not set
 CONFIG_USB_FSL_USB2=y
 # CONFIG_USB_FUSB300 is not set
@@ -8218,7 +8218,6 @@ CONFIG_NLATTR=y
 CONFIG_CLZ_TAB=y
 # CONFIG_IRQ_POLL is not set
 CONFIG_MPILIB=y
-CONFIG_DIMLIB=y
 CONFIG_LIBFDT=y
 CONFIG_OID_REGISTRY=y
 CONFIG_FONT_SUPPORT=y
