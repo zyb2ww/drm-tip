@@ -4,7 +4,7 @@
 #
 
 #
-# Compiler: gcc (Debian 9.2.1-8) 9.2.1 20190909
+# Compiler: gcc (Debian 9.2.1-16) 9.2.1 20191030
 #
 CONFIG_CC_IS_GCC=y
 CONFIG_GCC_VERSION=90201
