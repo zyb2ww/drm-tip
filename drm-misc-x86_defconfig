@@ -4,7 +4,7 @@
 #
 
 #
-# Compiler: gcc (Debian 9.2.1-16) 9.2.1 20191030
+# Compiler: gcc (Debian 9.2.1-17) 9.2.1 20191102
 #
 CONFIG_CC_IS_GCC=y
 CONFIG_GCC_VERSION=90201
@@ -3177,7 +3177,9 @@ CONFIG_DRM_PANEL_BRIDGE=y
 #
 # Display Interface Bridges
 #
+# CONFIG_DRM_ANALOGIX_ANX6345 is not set
 CONFIG_DRM_ANALOGIX_ANX78XX=m
+CONFIG_DRM_ANALOGIX_DP=m
 # end of Display Interface Bridges
 
 CONFIG_DRM_ETNAVIV=m
