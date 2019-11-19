@@ -3177,7 +3177,6 @@ CONFIG_DRM_PANEL_BRIDGE=y
 #
 # Display Interface Bridges
 #
-# CONFIG_DRM_ANALOGIX_ANX6345 is not set
 CONFIG_DRM_ANALOGIX_ANX78XX=m
 CONFIG_DRM_ANALOGIX_DP=m
 # end of Display Interface Bridges
