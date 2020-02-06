@@ -1,0 +1,35 @@
+diff --git a/drivers/gpu/drm/i915/display/intel_display.c b/drivers/gpu/drm/i915/display/intel_display.c
+index cde10b536a91..80eebdc4c670 100644
+--- a/drivers/gpu/drm/i915/display/intel_display.c
++++ b/drivers/gpu/drm/i915/display/intel_display.c
+@@ -17688,30 +17688,6 @@ static int sanitize_watermarks_add_affected(struct drm_atomic_state *state)
+ 	return 0;
+ }
+ 
+-static int sanitize_watermarks_add_affected(struct drm_atomic_state *state)
+-{
+-	struct drm_plane *plane;
+-	struct drm_crtc *crtc;
+-
+-	drm_for_each_crtc(crtc, state->dev) {
+-		struct drm_crtc_state *crtc_state;
+-
+-		crtc_state = drm_atomic_get_crtc_state(state, crtc);
+-		if (IS_ERR(crtc_state))
+-			return PTR_ERR(crtc_state);
+-	}
+-
+-	drm_for_each_plane(plane, state->dev) {
+-		struct drm_plane_state *plane_state;
+-
+-		plane_state = drm_atomic_get_plane_state(state, plane);
+-		if (IS_ERR(plane_state))
+-			return PTR_ERR(plane_state);
+-	}
+-
+-	return 0;
+-}
+-
+ /*
+  * Calculate what we think the watermarks should be for the state we've read
+  * out of the hardware and then immediately program those watermarks so that
