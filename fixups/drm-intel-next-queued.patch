@@ -1,0 +1,14 @@
+diff --git a/drivers/gpu/drm/i915/i915_request.c b/drivers/gpu/drm/i915/i915_request.c
+index 067dca277d39..ca5361eb1f0b 100644
+--- a/drivers/gpu/drm/i915/i915_request.c
++++ b/drivers/gpu/drm/i915/i915_request.c
+@@ -843,9 +843,6 @@ i915_request_await_start(struct i915_request *rq, struct i915_request *signal)
+ 	if (i915_request_started(signal))
+ 		return 0;
+ 
+-	if (i915_request_started(signal))
+-		return 0;
+-
+ 	fence = NULL;
+ 	rcu_read_lock();
+ 	spin_lock_irq(&signal->lock);
