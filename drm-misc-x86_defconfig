@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86 5.6.0-rc2 Kernel Configuration
+# Linux/x86 5.6.0-rc5 Kernel Configuration
 #
 
 #
@@ -685,6 +685,7 @@ CONFIG_HAVE_KVM_IRQ_BYPASS=y
 CONFIG_HAVE_KVM_NO_POLL=y
 CONFIG_VIRTUALIZATION=y
 CONFIG_KVM=m
+CONFIG_KVM_WERROR=y
 # CONFIG_KVM_INTEL is not set
 CONFIG_KVM_AMD=m
 # CONFIG_KVM_MMU_AUDIT is not set
