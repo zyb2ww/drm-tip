@@ -1,0 +1,12 @@
+diff --git a/drivers/rtc/rtc-cmos.c b/drivers/rtc/rtc-cmos.c
+index df5ff7e78a14..bcc96ab7793f 100644
+--- a/drivers/rtc/rtc-cmos.c
++++ b/drivers/rtc/rtc-cmos.c
+@@ -652,7 +652,6 @@ static irqreturn_t cmos_interrupt(int irq, void *p)
+ 	unsigned long	flags;
+ 	u8		irqstat;
+ 	u8		rtc_control;
+-	unsigned long	flags;
+ 
+ 	spin_lock_irqsave(&rtc_lock, flags);
+ 
