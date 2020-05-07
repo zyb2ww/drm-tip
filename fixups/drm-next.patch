@@ -1,0 +1,69 @@
+diff --git a/drivers/gpu/drm/i915/gt/intel_engine_cs.c b/drivers/gpu/drm/i915/gt/intel_engine_cs.c
+index b1f8527f02c8..7c3cb5aedfdf 100644
+--- a/drivers/gpu/drm/i915/gt/intel_engine_cs.c
++++ b/drivers/gpu/drm/i915/gt/intel_engine_cs.c
+@@ -1425,7 +1425,7 @@ static void intel_engine_print_registers(struct intel_engine_cs *engine,
+ 			len = scnprintf(hdr, sizeof(hdr),
+ 					"\t\tActive[%d]:  ccid:%08x, ",
+ 					(int)(port - execlists->active),
+-					upper_32_bits(rq->context->lrc_desc));
++					rq->context->lrc.ccid);
+ 			len += print_ring(hdr + len, sizeof(hdr) - len, rq);
+ 			scnprintf(hdr + len, sizeof(hdr) - len, "rq: ");
+ 			print_request(m, rq, hdr);
+@@ -1437,7 +1437,7 @@ static void intel_engine_print_registers(struct intel_engine_cs *engine,
+ 			len = scnprintf(hdr, sizeof(hdr),
+ 					"\t\tPending[%d]: ccid:%08x, ",
+ 					(int)(port - execlists->pending),
+-					upper_32_bits(rq->context->lrc_desc));
++					rq->context->lrc.ccid);
+ 			len += print_ring(hdr + len, sizeof(hdr) - len, rq);
+ 			scnprintf(hdr + len, sizeof(hdr) - len, "rq: ");
+ 			print_request(m, rq, hdr);
+diff --git a/drivers/gpu/drm/i915/gt/intel_engine_types.h b/drivers/gpu/drm/i915/gt/intel_engine_types.h
+index 290db0624ea5..96649bb9c74a 100644
+--- a/drivers/gpu/drm/i915/gt/intel_engine_types.h
++++ b/drivers/gpu/drm/i915/gt/intel_engine_types.h
+@@ -156,6 +156,11 @@ struct intel_engine_execlists {
+ 	 */
+ 	struct i915_priolist default_priolist;
+ 
++	/**
++	 * @ccid: identifier for contexts submitted to this engine
++	 */
++	u32 ccid;
++
+ 	/**
+ 	 * @yield: CCID at the time of the last semaphore-wait interrupt.
+ 	 *
+diff --git a/drivers/gpu/drm/i915/gt/intel_lrc.c b/drivers/gpu/drm/i915/gt/intel_lrc.c
+index 8b2108b86752..24f6d71f212f 100644
+--- a/drivers/gpu/drm/i915/gt/intel_lrc.c
++++ b/drivers/gpu/drm/i915/gt/intel_lrc.c
+@@ -1801,7 +1801,7 @@ timeslice_yield(const struct intel_engine_execlists *el,
+ 	 * safe, yield if it might be stuck -- it will be given a fresh
+ 	 * timeslice in the near future.
+ 	 */
+-	return upper_32_bits(rq->context->lrc_desc) == READ_ONCE(el->yield);
++	return rq->context->lrc.ccid == READ_ONCE(el->yield);
+ }
+ 
+ static bool
+@@ -2847,7 +2847,7 @@ active_context(struct intel_engine_cs *engine, u32 ccid)
+ 	 */
+ 
+ 	for (port = el->active; (rq = *port); port++) {
+-		if (upper_32_bits(rq->context->lrc_desc) == ccid) {
++		if (rq->context->lrc.ccid == ccid) {
+ 			ENGINE_TRACE(engine,
+ 				     "ccid found at active:%zd\n",
+ 				     port - el->active);
+@@ -2856,7 +2856,7 @@ active_context(struct intel_engine_cs *engine, u32 ccid)
+ 	}
+ 
+ 	for (port = el->pending; (rq = *port); port++) {
+-		if (upper_32_bits(rq->context->lrc_desc) == ccid) {
++		if (rq->context->lrc.ccid == ccid) {
+ 			ENGINE_TRACE(engine,
+ 				     "ccid found at pending:%zd\n",
+ 				     port - el->pending);
