@@ -1,0 +1,12 @@
+diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_atomfirmware.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_atomfirmware.c
+index f90eb9e88f6f..1279053324f9 100644
+--- a/drivers/gpu/drm/amd/amdgpu/amdgpu_atomfirmware.c
++++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_atomfirmware.c
+@@ -207,7 +207,6 @@ amdgpu_atomfirmware_get_vram_info(struct amdgpu_device *adev,
+ 				(mode_info->atom_context->bios + data_offset);
+ 			switch (crev) {
+ 			case 11:
+-			case 12:
+ 				mem_channel_number = igp_info->v11.umachannelnumber;
+ 				/* channel width is 64 */
+ 				if (vram_width)
