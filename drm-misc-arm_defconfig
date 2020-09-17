@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm 5.9.0-rc1 Kernel Configuration
+# Linux/arm 5.9.0-rc5 Kernel Configuration
 #
 CONFIG_CC_VERSION_TEXT="arm-linux-gnueabihf-gcc (Debian 10.2.0-3) 10.2.0"
 CONFIG_CC_IS_GCC=y
@@ -3139,6 +3139,7 @@ CONFIG_SPI_SPIDEV=y
 # CONFIG_SPI_LOOPBACK_TEST is not set
 # CONFIG_SPI_TLE62X0 is not set
 # CONFIG_SPI_SLAVE is not set
+CONFIG_SPI_DYNAMIC=y
 CONFIG_SPMI=y
 CONFIG_SPMI_MSM_PMIC_ARB=y
 # CONFIG_HSI is not set
@@ -4964,6 +4965,7 @@ CONFIG_DRM_AMD_ACP=y
 #
 CONFIG_DRM_AMD_DC=y
 # CONFIG_DRM_AMD_DC_HDCP is not set
+CONFIG_DRM_AMD_DC_SI=y
 # CONFIG_DEBUG_KERNEL_DC is not set
 # end of Display Engine Configuration
 
