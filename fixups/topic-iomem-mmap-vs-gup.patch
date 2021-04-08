@@ -1,0 +1,16 @@
+diff --git a/drivers/gpu/drm/i915/display/intel_dp_link_training.c b/drivers/gpu/drm/i915/display/intel_dp_link_training.c
+index 5494d247a60e..5e9c3c74310c 100644
+--- a/drivers/gpu/drm/i915/display/intel_dp_link_training.c
++++ b/drivers/gpu/drm/i915/display/intel_dp_link_training.c
+@@ -40,11 +40,6 @@ static void intel_dp_reset_lttpr_common_caps(struct intel_dp *intel_dp)
+ 	memset(&intel_dp->lttpr_common_caps, 0, sizeof(intel_dp->lttpr_common_caps));
+ }
+ 
+-static void intel_dp_reset_lttpr_common_caps(struct intel_dp *intel_dp)
+-{
+-	memset(&intel_dp->lttpr_common_caps, 0, sizeof(intel_dp->lttpr_common_caps));
+-}
+-
+ static void intel_dp_reset_lttpr_count(struct intel_dp *intel_dp)
+ {
+ 	intel_dp->lttpr_common_caps[DP_PHY_REPEATER_CNT -
