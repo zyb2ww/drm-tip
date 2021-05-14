@@ -1,0 +1,14 @@
+diff --git a/drivers/gpu/drm/i915/i915_active.c b/drivers/gpu/drm/i915/i915_active.c
+index a62620e35067..b1aa1c482c32 100644
+--- a/drivers/gpu/drm/i915/i915_active.c
++++ b/drivers/gpu/drm/i915/i915_active.c
+@@ -1153,8 +1153,7 @@ static int auto_active(struct i915_active *ref)
+ 	return 0;
+ }
+ 
+-__i915_active_call static void
+-auto_retire(struct i915_active *ref)
++static void auto_retire(struct i915_active *ref)
+ {
+ 	i915_active_put(ref);
+ }
