@@ -1,0 +1,75 @@
+diff --git a/drivers/gpu/drm/i915/intel_region_ttm.c b/drivers/gpu/drm/i915/intel_region_ttm.c
+index c8ac118c21f6..be55b7ae6a6c 100644
+--- a/drivers/gpu/drm/i915/intel_region_ttm.c
++++ b/drivers/gpu/drm/i915/intel_region_ttm.c
+@@ -4,6 +4,7 @@
+  */
+ #include <drm/ttm/ttm_bo_driver.h>
+ #include <drm/ttm/ttm_device.h>
++#include <drm/ttm/ttm_range_manager.h>
+ 
+ #include "i915_drv.h"
+ #include "i915_scatterlist.h"
+@@ -70,8 +71,8 @@ static void *intel_region_ttm_node_reserve(struct intel_memory_region *mem,
+ {
+ 	struct ttm_resource_manager *man = mem->region_private;
+ 	struct ttm_place place = {};
+-	struct ttm_resource res = {};
+ 	struct ttm_buffer_object mock_bo = {};
++	struct ttm_resource *res;
+ 	int ret;
+ 
+ 	/*
+@@ -87,12 +88,12 @@ static void *intel_region_ttm_node_reserve(struct intel_memory_region *mem,
+ 
+ 	place.fpfn = offset >> PAGE_SHIFT;
+ 	place.lpfn = place.fpfn + (size >> PAGE_SHIFT);
+-	res.num_pages = size >> PAGE_SHIFT;
++	mock_bo.base.size = size;
+ 	ret = man->func->alloc(man, &mock_bo, &place, &res);
+ 	if (ret == -ENOSPC)
+ 		ret = -ENXIO;
+ 
+-	return ret ? ERR_PTR(ret) : res.mm_node;
++	return ret ? ERR_PTR(ret) : res;
+ }
+ 
+ /**
+@@ -104,10 +105,8 @@ void intel_region_ttm_node_free(struct intel_memory_region *mem,
+ 				void *node)
+ {
+ 	struct ttm_resource_manager *man = mem->region_private;
+-	struct ttm_resource res = {};
+ 
+-	res.mm_node = node;
+-	man->func->free(man, &res);
++	man->func->free(man, node);
+ }
+ 
+ static const struct intel_memory_region_private_ops priv_ops = {
+@@ -193,8 +192,8 @@ void *intel_region_ttm_node_alloc(struct intel_memory_region *mem,
+ {
+ 	struct ttm_resource_manager *man = mem->region_private;
+ 	struct ttm_place place = {};
+-	struct ttm_resource res = {};
+ 	struct ttm_buffer_object mock_bo = {};
++	struct ttm_resource *res;
+ 	int ret;
+ 
+ 	/*
+@@ -202,7 +201,7 @@ void *intel_region_ttm_node_alloc(struct intel_memory_region *mem,
+ 	 * manager and contigous and min page size would be fulfilled
+ 	 * by default if size is min page size aligned.
+ 	 */
+-	res.num_pages = size >> PAGE_SHIFT;
++	mock_bo.base.size = size;
+ 
+ 	if (mem->is_range_manager) {
+ 		if (size >= SZ_1G)
+@@ -216,5 +215,5 @@ void *intel_region_ttm_node_alloc(struct intel_memory_region *mem,
+ 	ret = man->func->alloc(man, &mock_bo, &place, &res);
+ 	if (ret == -ENOSPC)
+ 		ret = -ENXIO;
+-	return ret ? ERR_PTR(ret) : res.mm_node;
++	return ret ? ERR_PTR(ret) : res;
+ }
