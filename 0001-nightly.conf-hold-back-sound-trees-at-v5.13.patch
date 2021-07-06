@@ -1,0 +1,31 @@
+From a08db45b3be9f5ae61f7e7119ec4c9992eff6de9 Mon Sep 17 00:00:00 2001
+From: Jani Nikula <jani.nikula@intel.com>
+Date: Tue, 6 Jul 2021 10:49:32 +0300
+Subject: [PATCH] nightly.conf: hold back sound trees at v5.13
+Organization: Intel Finland Oy - BIC 0357606-4 - Westendinkatu 7, 02160 Espoo
+Cc: Jani Nikula <jani.nikula@intel.com>
+
+The sound trees have rebased on Linus' tree in the middle of merge
+window. We don't want that in drm-tip. Hold them back at v5.13.
+---
+ nightly.conf | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/nightly.conf b/nightly.conf
+index 3cfde2dab047..728224b09c09 100644
+--- a/nightly.conf
++++ b/nightly.conf
+@@ -79,8 +79,8 @@ drm_tip_config=(
+ 	"drm-intel		drm-intel-next"
+ 	"drm-intel		drm-intel-gt-next"
+ 
+-	"sound-upstream		for-linus"
+-	"sound-upstream		for-next"
++	"sound-upstream		for-linus	v5.13"
++	"sound-upstream		for-next	v5.13"
+ 	"drm-intel		topic/core-for-CI"
+ 	"drm		topic/nouveau-ampere-modeset"
+ 	"drm-misc		topic/i915-ttm"
+-- 
+2.20.1
+
