@@ -265,3 +265,15 @@ index d4478b6ad11b..b7f8e9435b2c 100644
 +		      struct i915_gem_ww_ctx *ww);
  
  #endif /* __I915_GEM_EVICT_H__ */
+diff --git a/drivers/gpu/drm/i915/gem/i915_gem_mman.c b/drivers/gpu/drm/i915/gem/i915_gem_mman.c
+index 4afad1604a6a..30507fe86b4c 100644
+--- a/drivers/gpu/drm/i915/gem/i915_gem_mman.c
++++ b/drivers/gpu/drm/i915/gem/i915_gem_mman.c
+@@ -13,6 +13,7 @@
+ #include "gt/intel_gt_requests.h"
+ 
+ #include "i915_drv.h"
++#include "i915_gem_evict.h"
+ #include "i915_gem_gtt.h"
+ #include "i915_gem_ioctls.h"
+ #include "i915_gem_object.h"
