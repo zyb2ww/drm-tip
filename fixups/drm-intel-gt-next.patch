@@ -247,8 +247,9 @@ diff --git a/drivers/gpu/drm/i915/i915_gem_evict.h b/drivers/gpu/drm/i915/i915_g
 index d4478b6ad11b..b7f8e9435b2c 100644
 --- a/drivers/gpu/drm/i915/i915_gem_evict.h
 +++ b/drivers/gpu/drm/i915/i915_gem_evict.h
-@@ -12,13 +12,16 @@ struct drm_mm_node;
+@@ -12,14 +12,17 @@ struct drm_mm_node;
  struct i915_address_space;
+ struct i915_gem_ww_ctx;
  
  int __must_check i915_gem_evict_something(struct i915_address_space *vm,
 +					  struct i915_gem_ww_ctx *ww,
