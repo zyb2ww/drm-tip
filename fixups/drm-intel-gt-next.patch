@@ -278,3 +278,15 @@ index 4afad1604a6a..30507fe86b4c 100644
  #include "i915_gem_gtt.h"
  #include "i915_gem_ioctls.h"
  #include "i915_gem_object.h"
+diff --git a/drivers/gpu/drm/i915/gt/intel_gt_regs.h b/drivers/gpu/drm/i915/gt/intel_gt_regs.h
+index 16d98ebee687..a6f0220c2e9f 100644
+--- a/drivers/gpu/drm/i915/gt/intel_gt_regs.h
++++ b/drivers/gpu/drm/i915/gt/intel_gt_regs.h
+@@ -1482,6 +1482,7 @@ enum {
+ 
+ #define GEN9_ROW_CHICKEN4				_MMIO(0xe48c)
+ #define   GEN12_DISABLE_GRF_CLEAR			REG_BIT(13)
++#define   XEHP_DIS_BBL_SYSPIPE				REG_BIT(11)
+ #define   GEN12_DISABLE_TDL_PUSH			REG_BIT(9)
+ #define   GEN11_DIS_PICK_2ND_EU				REG_BIT(7)
+ #define   GEN12_DISABLE_HDR_PAST_PAYLOAD_HOLD_FIX	REG_BIT(4)
