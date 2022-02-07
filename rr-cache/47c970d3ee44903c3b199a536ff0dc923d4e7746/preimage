@@ -1,0 +1,294 @@
+// SPDX-License-Identifier: MIT
+/*
+ * Copyright © 2020 Intel Corporation
+ */
+
+#include <linux/sizes.h>
+
+#include "xe_bb.h"
+#include "xe_bo.h"
+#include "xe_engine.h"
+#include "xe_hw_engine.h"
+#include "xe_migrate.h"
+#include "xe_device.h"
+<<<<<<<
+=======
+#include "xe_res_cursor.h"
+#include <drm/ttm/ttm_tt.h>
+>>>>>>>
+
+#include "../i915/gt/intel_gpu_commands.h"
+
+#define CHUNK_SZ SZ_8M
+
+int xe_migrate_init(struct xe_migrate *m, struct xe_hw_engine *eng)
+{
+	struct xe_device *xe = eng->xe;
+	int err;
+
+	memset(m, 0, sizeof(*m));
+	err = xe_ggtt_insert_special_node(&xe->ggtt, &m->copy_node, 2 * CHUNK_SZ, 2 * CHUNK_SZ);
+	if (err)
+		return err;
+
+	m->eng = eng;
+	m->lrc = &eng->kernel_lrc;
+	return 0;
+}
+
+void xe_migrate_fini(struct xe_migrate *m)
+{
+	xe_ggtt_remove_node(&m->eng->xe->ggtt, &m->copy_node);
+
+	memset(m, 0, sizeof(*m));
+}
+
+static void emit_arb_clear(struct xe_bb *bb)
+{
+	/* 1 dword */
+	bb->cs[bb->len++] = MI_ARB_ON_OFF | MI_ARB_DISABLE;
+}
+
+<<<<<<<
+#define MAX_GGTT_UPDATE_SIZE (2 * DIV_ROUND_UP(CHUNK_SZ >> 12, 0xff) + (CHUNK_SZ >> 11))
+static void emit_pte(struct xe_ggtt *ggtt, struct xe_bb *bb, u64 ggtt_ofs,
+		     struct ttm_resource *res, struct xe_res_cursor *cur,
+		     u32 ofs, u32 size, struct ttm_tt *ttm)
+{
+	u32 ptes = size >> 12;
+	bool lmem = res->mem_type == TTM_PL_VRAM;
+
+	while (ptes) {
+		u32 chunk = min(0xffU, ptes);
+
+		bb->cs[bb->len++] = MI_UPDATE_GTT | (chunk * 2);
+		bb->cs[bb->len++] = ggtt_ofs;
+
+		ofs += chunk << 12;
+		ggtt_ofs += chunk << 12;
+		ptes -= chunk;
+
+		while (chunk--) {
+			u64 addr;
+
+			if (lmem) {
+				addr = cur->start;
+				addr |= 3;
+			} else {
+				u32 ofs = cur->start & ~PAGE_MASK;
+
+				addr = ttm->dma_address[ofs >> PAGE_SHIFT] + ofs + 1;
+			}
+
+			bb->cs[bb->len++] = lower_32_bits(addr);
+			bb->cs[bb->len++] = upper_32_bits(addr);
+
+			xe_res_next(cur, 4096);
+		}
+	}
+=======
+static void emit_pte(struct xe_ggtt *ggtt, struct xe_bb *bb, u64 ggtt_ofs,
+		     struct ttm_resource *res, u32 ofs, u32 size)
+{
+	/* max 15 + 1024 dwords */
+	bb->cs[bb->len++] = MI_NOOP;
+	/* TODO */
+>>>>>>>
+}
+
+static void emit_flush(struct xe_bb *bb)
+{
+<<<<<<<
+	/* TODO */
+	bb->cs[bb->len++] = MI_NOOP;
+	bb->cs[bb->len++] = MI_NOOP;
+	bb->cs[bb->len++] = MI_NOOP;
+	bb->cs[bb->len++] = MI_NOOP;
+=======
+	bb->cs[bb->len++] = (MI_FLUSH_DW | MI_INVALIDATE_TLB) + 1;
+	bb->cs[bb->len++] = 0; /* lower_32_bits(addr) */
+	bb->cs[bb->len++] = 0; /* upper_32_bits(addr) */
+	bb->cs[bb->len++] = 0; /* value */
+>>>>>>>
+ }
+
+static bool wa_1209644611_applies(int ver, u32 size)
+{
+	u32 height = size >> PAGE_SHIFT;
+
+	if (ver != 11)
+		return false;
+
+	return height % 4 == 3 && height <= 8;
+}
+
+<<<<<<<
+static int emit_copy(struct xe_device *xe, struct xe_bb *bb,
+		     u64 src_ofs, u64 dst_ofs, unsigned int size)
+=======
+static int emit_copy(struct xe_device *xe, struct xe_bb *bb, u64 src_ofs, u64 dst_ofs, unsigned int size)
+>>>>>>>
+{
+	u32 ver = GRAPHICS_VER(xe);
+
+	if (ver >= 9 && !wa_1209644611_applies(ver, size)) {
+		bb->cs[bb->len++] = GEN9_XY_FAST_COPY_BLT_CMD | (10 - 2);
+		bb->cs[bb->len++] = BLT_DEPTH_32 | PAGE_SIZE;
+	} else {
+		bb->cs[bb->len++] = XY_SRC_COPY_BLT_CMD | BLT_WRITE_RGBA | (10 - 2);
+		bb->cs[bb->len++] = BLT_DEPTH_32 | BLT_ROP_SRC_COPY | PAGE_SIZE;
+	}
+	bb->cs[bb->len++] = 0;
+	bb->cs[bb->len++] = size >> PAGE_SHIFT << 16 | PAGE_SIZE / 4;
+	bb->cs[bb->len++] = dst_ofs; /* dst offset */
+	bb->cs[bb->len++] = dst_ofs >> 32ULL;
+	bb->cs[bb->len++] = 0;
+	bb->cs[bb->len++] = PAGE_SIZE;
+	bb->cs[bb->len++] = src_ofs; /* src offset */
+	bb->cs[bb->len++] = src_ofs >> 32ULL;
+
+	return 0;
+}
+
+struct dma_fence *xe_migrate_copy(struct xe_migrate *m,
+				  struct xe_bo *bo,
+				  struct ttm_resource *src,
+				  struct ttm_resource *dst)
+{
+	struct xe_hw_engine *eng = m->eng;
+	struct xe_device *xe = eng->xe;
+	struct xe_bb *bb;
+	struct dma_fence *fence, *prev_fence = NULL;
+	u32 size = bo->size;
+	u32 ofs = 0;
+	u64 ggtt_copy_ofs = m->copy_node.start;
+<<<<<<<
+	struct xe_res_cursor src_it, dst_it;
+	struct ttm_tt *ttm = bo->ttm.ttm;
+
+	xe_res_first(src, 0, bo->size, &src_it);
+	xe_res_first(dst, 0, bo->size, &dst_it);
+
+	while (size) {
+		u32 copy = min_t(u32, CHUNK_SZ, size);
+		u32 batch_size = 19 + 2 * MAX_GGTT_UPDATE_SIZE;
+
+		bb = xe_bb_new(eng->xe, batch_size);
+=======
+
+	while (size) {
+		u32 copy = min_t(u32, CHUNK_SZ, size);
+
+		bb = xe_bb_new(eng->xe, 1 + 2 * (15 + 1024) + 4 + 10);
+>>>>>>>
+		if (IS_ERR(bb)) {
+			if (prev_fence)
+				dma_fence_put(prev_fence);
+			return ERR_CAST(bb);
+		}
+
+		/* TODO: Add dependencies here */
+		emit_arb_clear(bb);
+<<<<<<<
+		emit_flush(bb); /* ensure previous migration completed */
+		emit_pte(&xe->ggtt, bb, ggtt_copy_ofs, src, &src_it, ofs, copy, ttm);
+		emit_pte(&xe->ggtt, bb, ggtt_copy_ofs + CHUNK_SZ, dst, &dst_it, ofs, copy, ttm);
+=======
+		emit_pte(&xe->ggtt, bb, ggtt_copy_ofs, src, ofs, copy);
+		emit_pte(&xe->ggtt, bb, ggtt_copy_ofs + CHUNK_SZ, dst, ofs, copy);
+>>>>>>>
+		emit_flush(bb);
+		emit_copy(eng->xe, bb, ggtt_copy_ofs, ggtt_copy_ofs + CHUNK_SZ, copy);
+
+		fence = xe_bb_submit(eng, bb);
+		xe_bb_free(bb, fence);
+
+		if (prev_fence)
+			dma_fence_put(prev_fence);
+		prev_fence = fence;
+
+		ofs += copy;
+		size -= copy;
+	}
+
+	if (prev_fence && prev_fence != fence)
+		dma_fence_put(prev_fence);
+
+	return fence;
+}
+
+static int emit_clear(struct xe_bb *bb, u64 src_ofs, u32 size, u32 value)
+{
+	BUG_ON(size >> PAGE_SHIFT > S16_MAX);
+
+	bb->cs[bb->len++] = XY_COLOR_BLT_CMD | BLT_WRITE_RGBA | (7 - 2);
+	bb->cs[bb->len++] = BLT_DEPTH_32 | BLT_ROP_COLOR_COPY | PAGE_SIZE;
+	bb->cs[bb->len++] = 0;
+	bb->cs[bb->len++] = size >> PAGE_SHIFT << 16 | PAGE_SIZE / 4;
+	bb->cs[bb->len++] = src_ofs; /* offset */
+	bb->cs[bb->len++] = src_ofs >> 32ULL;
+	bb->cs[bb->len++] = value;
+
+	return 0;
+}
+
+struct dma_fence *xe_migrate_clear(struct xe_migrate *m,
+				   struct xe_bo *bo,
+				   struct ttm_resource *src)
+{
+	struct xe_hw_engine *eng = m->eng;
+	struct xe_device *xe = eng->xe;
+	struct xe_bb *bb;
+	struct dma_fence *fence, *prev_fence = NULL;
+	u32 size = bo->size;
+	u32 ofs = 0;
+	u64 ggtt_copy_ofs = m->copy_node.start;
+<<<<<<<
+=======
+	struct xe_res_cursor src_it;
+
+	xe_res_first(src, 0, bo->size, &src_it);
+>>>>>>>
+
+	while (size) {
+		u32 clear = min_t(u32, CHUNK_SZ, size);
+
+<<<<<<<
+		bb = xe_bb_new(eng->xe, 1 + 2 * (15 + 1024) + 4 + 10);
+=======
+		bb = xe_bb_new(eng->xe, 16 + MAX_GGTT_UPDATE_SIZE);
+>>>>>>>
+		if (IS_ERR(bb)) {
+			if (prev_fence)
+				dma_fence_put(prev_fence);
+			return ERR_CAST(bb);
+		}
+
+		/* TODO: Add dependencies here */
+		emit_arb_clear(bb);
+<<<<<<<
+		emit_flush(bb);
+		emit_pte(&xe->ggtt, bb, ggtt_copy_ofs, src, &src_it, ofs, clear, bo->ttm.ttm);
+=======
+		emit_pte(&xe->ggtt, bb, ggtt_copy_ofs, src, ofs, clear);
+>>>>>>>
+		emit_flush(bb);
+		emit_clear(bb, ggtt_copy_ofs, clear, 0);
+
+		fence = xe_bb_submit(eng, bb);
+		xe_bb_free(bb, fence);
+
+		if (prev_fence)
+			dma_fence_put(prev_fence);
+		prev_fence = fence;
+
+		ofs += clear;
+		size -= clear;
+	}
+
+	if (prev_fence && prev_fence != fence)
+		dma_fence_put(prev_fence);
+
+	return fence;
+}
+

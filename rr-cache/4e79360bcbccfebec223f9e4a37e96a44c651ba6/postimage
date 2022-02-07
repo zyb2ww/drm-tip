@@ -1,0 +1,21 @@
+#ifndef _XE_BB_H_
+#define _XE_BB_H_
+
+#include <linux/types.h>
+
+struct xe_sa_bo;
+struct xe_device;
+struct xe_hw_engine;
+
+struct xe_bb {
+	struct xe_sa_bo *bo;
+
+	u32 *cs;
+	u32 len; /* in dwords */
+};
+
+struct xe_bb *xe_bb_new(struct xe_device *xe, u32 size);
+struct dma_fence *xe_bb_submit(struct xe_hw_engine *hw_eng, struct xe_bb *bb);
+void xe_bb_free(struct xe_bb *bb, struct dma_fence *fence);
+
+#endif
