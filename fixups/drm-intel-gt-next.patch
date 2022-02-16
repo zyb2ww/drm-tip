@@ -1,8 +1,57 @@
+diff --git a/drivers/gpu/drm/i915/gem/i915_gem_mman.c b/drivers/gpu/drm/i915/gem/i915_gem_mman.c
+index 0e5ff331c340..efe69d6b86f4 100644
+--- a/drivers/gpu/drm/i915/gem/i915_gem_mman.c
++++ b/drivers/gpu/drm/i915/gem/i915_gem_mman.c
+@@ -15,6 +15,7 @@
+ #include "gt/intel_gt_requests.h"
+ 
+ #include "i915_drv.h"
++#include "i915_gem_evict.h"
+ #include "i915_gem_gtt.h"
+ #include "i915_gem_ioctls.h"
+ #include "i915_gem_object.h"
+diff --git a/drivers/gpu/drm/i915/gt/intel_gt_regs.h b/drivers/gpu/drm/i915/gt/intel_gt_regs.h
+index e8143fa4b5a8..bf4b942c62ee 100644
+--- a/drivers/gpu/drm/i915/gt/intel_gt_regs.h
++++ b/drivers/gpu/drm/i915/gt/intel_gt_regs.h
+@@ -1042,6 +1042,7 @@
+ 
+ #define GEN9_ROW_CHICKEN4			_MMIO(0xe48c)
+ #define   GEN12_DISABLE_GRF_CLEAR		REG_BIT(13)
++#define   XEHP_DIS_BBL_SYSPIPE			REG_BIT(11)
+ #define   GEN12_DISABLE_TDL_PUSH		REG_BIT(9)
+ #define   GEN11_DIS_PICK_2ND_EU			REG_BIT(7)
+ #define   GEN12_DISABLE_HDR_PAST_PAYLOAD_HOLD_FIX	REG_BIT(4)
+diff --git a/drivers/gpu/drm/i915/i915_gem_evict.h b/drivers/gpu/drm/i915/i915_gem_evict.h
+index d4478b6ad11b..e593c530f9bd 100644
+--- a/drivers/gpu/drm/i915/i915_gem_evict.h
++++ b/drivers/gpu/drm/i915/i915_gem_evict.h
+@@ -10,15 +10,19 @@
+ 
+ struct drm_mm_node;
+ struct i915_address_space;
++struct i915_gem_ww_ctx;
+ 
+ int __must_check i915_gem_evict_something(struct i915_address_space *vm,
++					  struct i915_gem_ww_ctx *ww,
+ 					  u64 min_size, u64 alignment,
+ 					  unsigned long color,
+ 					  u64 start, u64 end,
+ 					  unsigned flags);
+ int __must_check i915_gem_evict_for_node(struct i915_address_space *vm,
++					 struct i915_gem_ww_ctx *ww,
+ 					 struct drm_mm_node *node,
+ 					 unsigned int flags);
+-int i915_gem_evict_vm(struct i915_address_space *vm);
++int i915_gem_evict_vm(struct i915_address_space *vm,
++		      struct i915_gem_ww_ctx *ww);
+ 
+ #endif /* __I915_GEM_EVICT_H__ */
 diff --git a/drivers/gpu/drm/i915/i915_vma.c b/drivers/gpu/drm/i915/i915_vma.c
-index 3ff95e54a353..de24e4b3b19b 100644
+index ac7993a17e95..845cd88f8313 100644
 --- a/drivers/gpu/drm/i915/i915_vma.c
 +++ b/drivers/gpu/drm/i915/i915_vma.c
-@@ -908,30 +908,39 @@ intel_rotate_pages(struct intel_rotation_info *rot_info,
+@@ -968,30 +968,39 @@ intel_rotate_pages(struct intel_rotation_info *rot_info,
  }
  
  static struct scatterlist *
@@ -60,7 +109,7 @@ index 3ff95e54a353..de24e4b3b19b 100644
  
  	for (row = 0; row < height; row++) {
  		unsigned int left = width * I915_GTT_PAGE_SIZE;
-@@ -968,18 +977,98 @@ remap_pages(struct drm_i915_gem_object *obj,
+@@ -1028,18 +1037,98 @@ remap_pages(struct drm_i915_gem_object *obj,
  		if (!left)
  			continue;
  
@@ -169,7 +218,7 @@ index 3ff95e54a353..de24e4b3b19b 100644
  
  	return sg;
  }
-@@ -1008,21 +1097,8 @@ intel_remap_pages(struct intel_remapped_info *rem_info,
+@@ -1068,21 +1157,8 @@ intel_remap_pages(struct intel_remapped_info *rem_info,
  	st->nents = 0;
  	sg = st->sgl;
  
@@ -193,7 +242,7 @@ index 3ff95e54a353..de24e4b3b19b 100644
  
  	i915_sg_trim(st);
  
-@@ -1044,9 +1120,8 @@ intel_partial_pages(const struct i915_ggtt_view *view,
+@@ -1104,9 +1180,8 @@ intel_partial_pages(const struct i915_ggtt_view *view,
  		    struct drm_i915_gem_object *obj)
  {
  	struct sg_table *st;
@@ -204,7 +253,7 @@ index 3ff95e54a353..de24e4b3b19b 100644
  	int ret = -ENOMEM;
  
  	st = kmalloc(sizeof(*st), GFP_KERNEL);
-@@ -1057,34 +1132,14 @@ intel_partial_pages(const struct i915_ggtt_view *view,
+@@ -1117,34 +1192,14 @@ intel_partial_pages(const struct i915_ggtt_view *view,
  	if (ret)
  		goto err_sg_alloc;
  
@@ -243,50 +292,3 @@ index 3ff95e54a353..de24e4b3b19b 100644
  
  err_sg_alloc:
  	kfree(st);
-diff --git a/drivers/gpu/drm/i915/i915_gem_evict.h b/drivers/gpu/drm/i915/i915_gem_evict.h
-index d4478b6ad11b..b7f8e9435b2c 100644
---- a/drivers/gpu/drm/i915/i915_gem_evict.h
-+++ b/drivers/gpu/drm/i915/i915_gem_evict.h
-@@ -12,13 +12,17 @@ struct drm_mm_node;
- struct i915_address_space;
-+struct i915_gem_ww_ctx;
- 
- int __must_check i915_gem_evict_something(struct i915_address_space *vm,
-+					  struct i915_gem_ww_ctx *ww,
- 					  u64 min_size, u64 alignment,
- 					  unsigned long color,
- 					  u64 start, u64 end,
- 					  unsigned flags);
- int __must_check i915_gem_evict_for_node(struct i915_address_space *vm,
-+					 struct i915_gem_ww_ctx *ww,
- 					 struct drm_mm_node *node,
- 					 unsigned int flags);
--int i915_gem_evict_vm(struct i915_address_space *vm);
-+int i915_gem_evict_vm(struct i915_address_space *vm,
-+		      struct i915_gem_ww_ctx *ww);
- 
- #endif /* __I915_GEM_EVICT_H__ */
-diff --git a/drivers/gpu/drm/i915/gem/i915_gem_mman.c b/drivers/gpu/drm/i915/gem/i915_gem_mman.c
-index 4afad1604a6a..30507fe86b4c 100644
---- a/drivers/gpu/drm/i915/gem/i915_gem_mman.c
-+++ b/drivers/gpu/drm/i915/gem/i915_gem_mman.c
-@@ -13,6 +13,7 @@
- #include "gt/intel_gt_requests.h"
- 
- #include "i915_drv.h"
-+#include "i915_gem_evict.h"
- #include "i915_gem_gtt.h"
- #include "i915_gem_ioctls.h"
- #include "i915_gem_object.h"
-diff --git a/drivers/gpu/drm/i915/gt/intel_gt_regs.h b/drivers/gpu/drm/i915/gt/intel_gt_regs.h
-index 16d98ebee687..a6f0220c2e9f 100644
---- a/drivers/gpu/drm/i915/gt/intel_gt_regs.h
-+++ b/drivers/gpu/drm/i915/gt/intel_gt_regs.h
-@@ -1482,6 +1482,7 @@ enum {
- 
- #define GEN9_ROW_CHICKEN4				_MMIO(0xe48c)
- #define   GEN12_DISABLE_GRF_CLEAR			REG_BIT(13)
-+#define   XEHP_DIS_BBL_SYSPIPE				REG_BIT(11)
- #define   GEN12_DISABLE_TDL_PUSH			REG_BIT(9)
- #define   GEN11_DIS_PICK_2ND_EU				REG_BIT(7)
- #define   GEN12_DISABLE_HDR_PAST_PAYLOAD_HOLD_FIX	REG_BIT(4)
