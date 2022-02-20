@@ -292,3 +292,29 @@ index ac7993a17e95..845cd88f8313 100644
  
  err_sg_alloc:
  	kfree(st);
+diff --git a/drivers/gpu/drm/i915/gt/intel_gt_regs.h b/drivers/gpu/drm/i915/gt/intel_gt_regs.h
+index bf4b942c62ee..18d158d77aba 100644
+--- a/drivers/gpu/drm/i915/gt/intel_gt_regs.h
++++ b/drivers/gpu/drm/i915/gt/intel_gt_regs.h
+@@ -322,6 +322,9 @@
+ 
+ #define GEN12_PAT_INDEX(index)			_MMIO(0x4800 + (index) * 4)
+ 
++#define XEHPSDV_FLAT_CCS_BASE_ADDR		_MMIO(0x4910)
++#define   XEHPSDV_CCS_BASE_SHIFT		8
++
+ #define GAMTARBMODE				_MMIO(0x4a08)
+ #define   ARB_MODE_BWGTLB_DISABLE		(1 << 9)
+ #define   ARB_MODE_SWIZZLE_BDW			(1 << 1)
+diff --git a/drivers/gpu/drm/i915/gt/intel_region_lmem.c b/drivers/gpu/drm/i915/gt/intel_region_lmem.c
+index ea0c4fa1edae..fc00888ca4b2 100644
+--- a/drivers/gpu/drm/i915/gt/intel_region_lmem.c
++++ b/drivers/gpu/drm/i915/gt/intel_region_lmem.c
+@@ -12,6 +12,7 @@
+ #include "gem/i915_gem_region.h"
+ #include "gem/i915_gem_ttm.h"
+ #include "gt/intel_gt.h"
++#include "gt/intel_gt_regs.h"
+ 
+ static int
+ region_lmem_release(struct intel_memory_region *mem)
